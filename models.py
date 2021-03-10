@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from env import Observations
+from env import Observation
 
 def lstm(i, e, c, r, sizes):
     c = layers.Embedding(106, 4)(c)
@@ -158,40 +158,6 @@ def modelTFFunctionAction(model):
 
 class QModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm', gamma=0.99):
-        '''input1 = keras.Input(batch_shape=(1, isize))
-        input2 = keras.Input(batch_shape=(1, esize))
-        executingInput = keras.Input(batch_shape=(1, 1))
-        chosenInput = keras.Input(batch_shape=(1, 105))
-
-        self.rnn = rnn
-        rnnfn = rnns[rnn] if rnn in rnns else None
-        self.feature = rnnfn(input1, input2, executingInput, rnnSizes)
-        mainOutput = simpleModel(self.feature)
-        oneCardOutput = chooseOneCard(self.feature, executingInput)
-        oneColorOutput = chooseOneColor(self.feature, executingInput)
-        anyCardOutput = chooseAnyCard(self.feature, executingInput, chosenInput)
-        anyColorOutput = chooseAnyColor(self.feature, executingInput, chosenInput)
-        ynOutput = chooseYn(self.feature, executingInput)
-
-        self.rnnModel = keras.Model(inputs=[input1, input2, executingInput], outputs=self.feature)
-        self.rnnLayers = self.rnnModel.layers[9:-1]
-        assert len(self.rnnLayers) == len(rnnSizes)
-        self.rnnModel.summary()
-
-        self.mainModel = keras.Model(inputs=[input1, input2, executingInput], outputs=mainOutput)
-        self.oneCardModel = keras.Model(inputs=[input1, input2, executingInput], outputs=oneCardOutput)
-        self.oneColorModel = keras.Model(inputs=[input1, input2, executingInput], outputs=oneColorOutput)
-        self.anyCardModel = keras.Model(inputs=[input1, input2, executingInput, chosenInput], outputs=anyCardOutput)
-        self.anyColorModel = keras.Model(inputs=[input1, input2, executingInput, chosenInput], outputs=anyColorOutput)
-        self.ynModel = keras.Model(inputs=[input1, input2, executingInput], outputs=ynOutput)
-
-        self.models = [self.mainModel, self.ynModel, self.oneCardModel, self.oneColorModel, self.anyCardModel, self.anyColorModel]
-        self.modelsDict = {'main': self.mainModel,'yn': self.ynModel,
-        'oc': self.oneCardModel, 'ot': self.oneColorModel,
-        'ac': self.anyCardModel, 'at': self.anyColorModel}
-        self.model = keras.Model(inputs=[input1, input2, executingInput, chosenInput],
-            outputs=[mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput])
-        self.model.summary()'''
         self.model, self.modelsDict, self.rnnLayers = buildModel(isize, esize, rnnSizes, rnn=rnn)
         self.functionDict = {}
         for k in self.modelsDict:
@@ -209,10 +175,10 @@ class QModel:
     def fit(self, data, target=None, loops=1, double=True):
         if not target:
             target = self.target
-        for loop in range(loops):
-            print('loop', loop)
+        for _ in range(loops):
+            #print('loop', loop)
             for i, episode in enumerate(data):
-                print('episode', i+1)
+                print('episode', i+1, 'length', len(episode))
                 t0 = time.time()
                 ys = []
                 xs = []
@@ -226,7 +192,7 @@ class QModel:
                             bestAct = tf.argmax(cqs)
                             q_next = nqs[bestAct]
                         else:
-                            q_next = tf.maximum(nqs)
+                            q_next = tf.reduce_max(nqs)
                         ys.append(self.gamma * q_next)
                     else:
                         ys.append(reward)

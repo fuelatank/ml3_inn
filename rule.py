@@ -6,7 +6,7 @@ import bisect as bs
 import pandas as pd
 import numpy as np
 import logging as lg
-from collections import *
+from collections import Counter, deque
 from copy import copy as cp, deepcopy as dc
 
 MODE = 'w'
@@ -285,9 +285,9 @@ class Player:
             #self.adlog(cs)
             pass
         if list(map(lambda c: c.age, self.cards)) != self.cages:
-            raise
+            raise Exception()
         if list(map(lambda c: c.age, self.scores)) != self.sages:
-            raise
+            raise Exception()
         c = self.cds.pop(age)
         pos = bs.bisect(self.cages, c.age)
         self.cages.insert(pos, c.age)
@@ -605,8 +605,8 @@ class Player:
     def exchange(self, m1, m2, cs1, cs2):
         cs1 = cp(cs1)
         cs2 = cp(cs2)
-        p1 = self.pOf(m1)
-        p2 = self.pOf(m2)
+        #p1 = self.pOf(m1)
+        #p2 = self.pOf(m2)
         ages1 = self.ageOf(m1)
         ages2 = self.ageOf(m2)
         for c in cs1:
@@ -629,8 +629,8 @@ class Player:
         self.ps.shared[-1] = True
 
     def exchange1(self, c1, c2, cs1, cs2):
-        p1 = self.pOf(cs1)
-        p2 = self.pOf(cs2)
+        #p1 = self.pOf(cs1)
+        #p2 = self.pOf(cs2)
         for c, cs, ocs in ((c1, cs1, cs2), (c2, cs2, cs1)):
             #print(c, cs, ocs, self.ageOf(cs), self.ageOf(ocs))
             cs.remove(c)
@@ -643,7 +643,7 @@ class Player:
         self.ps.shared[-1] = True
 
     def ilog(self, msg, *args):
-        pass#self.lgr.info(msg, *args)
+        self.lgr.info(msg, *args)
 
     def dlog(self, msg, *args):
         pass#self.lgr.debug(msg, *args)
@@ -655,7 +655,7 @@ class Player:
         pass#self.olgr.debug(msg, *args)
 
     def ailog(self, msg, *args):
-        pass#self.lgr.info(msg, *args)
+        self.lgr.info(msg, *args)
         #self.olgr.info(msg, *args)
 
     def adlog(self, msg, *args):

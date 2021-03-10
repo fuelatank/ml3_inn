@@ -1,10 +1,13 @@
 
+import os, time
+
 from rule import Players, Game
 from agents import QAgent, QBuffer, RandomAgent
 from models import QModel
 from env import Computer
 
-EVAL_N_PER_AGENT = 20
+EVAL_N_PER_AGENT = 6#20
+EVAL_FREQ = 50
 
 model1 = QModel(296, 220, [64], 3e-5)
 model2 = QModel(296, 220, [64], 3e-5)
@@ -19,35 +22,49 @@ players = Players(player1, player2, path='log\\qAgents\\test\\0\\')
 #rand = Computer(RandomAgent(), name='rand')
 #rand2 = Computer(RandomAgent(), name='rand')
 #players = Players(rand, rand2, path='log\\qAgents\\test\\0\\')
-#evalgame = Game(path='log\\qAgents\\test\\Game\\0\\')
-#evaluators = [Computer(RandomAgent(), name='rand')]
-for i in range(1000):
-	print(f'collecting trajectory {i+1}')
-	r = players.run()
-	players.reset()
-	if r == player1:
-		v = 1
-	elif r == player2:
-		v = -1
-	else:
-		v = 0
-	agent1.finish_path(v)
-	agent2.finish_path(-v)
-	agent1.train()
-	agent2.train()
-	if i % 10 == 0: pass
-'''		for e in evaluators:
-			win = 0
-			lose = 0
-			for player in [player1, player2]:
-				for j in range(EVAL_N_PER_AGENT):
-					if j % 2 == 0:
-						r = evalgame.run(e, player)
-					else:
-						r = evalgame.run(player, e)
-					if r == e:
-						lose += 1
-					elif r == player:
-						win += 1
-			score = win/(win+lose)
-			print(i, score)'''
+evalgame = Game(path='log\\qAgents\\test\\Game\\0\\')
+evaluators = [Computer(RandomAgent(), name='rand')]
+def train(n):
+    scores = []
+    for i in range(n):
+        print(f'trajectory {i+1}')
+        t0 = time.time()
+        r = evalgame.run(player1, player2)
+        #players.reset()
+        if r == player1:
+            v = 1
+        elif r == player2:
+            v = -1
+        else:
+            v = 0
+        agent1.finish_path(v)
+        agent2.finish_path(-v)
+        print('collect:', time.time()-t0)
+        t0 = time.time()
+        agent1.train()
+        agent2.train()
+        print('train:', time.time()-t0)
+        if i % EVAL_FREQ == 0:
+            print('evaluating...', end='')
+            for e in evaluators:
+                win = 0
+                lose = 0
+                for player, agent in zip([player1, player2], agents):
+                    agent.collecting = False
+                    for j in range(EVAL_N_PER_AGENT):
+                        if j % 2 == 0:
+                            r = evalgame.run(e, player)
+                        else:
+                            r = evalgame.run(player, e)
+                        if r == e:
+                            lose += 1
+                        elif r == player:
+                            win += 1
+                        #agent.finish_path(None)
+                    agent.collecting = True
+                score = win/(win+lose)
+                print(score)
+            scores.append(score)
+    return scores
+
+scores = train(10)
