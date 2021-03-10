@@ -162,11 +162,7 @@ class QModel:
         self.functionDict = {}
         for k in self.modelsDict:
             model = self.modelsDict[k]
-            @tf.function
-            def pred(data, denseValids):
-                r = model(data)[0]
-                return tf.exp(r) * denseValids
-            self.functionDict[k] = pred
+            self.functionDict[k] = modelTFFunction(model)
         self.optimizer = keras.optimizers.Adam(learning_rate=lr)
         self.gamma = gamma
         self.target = Target(buildModel(isize, esize, rnnSizes, rnn=rnn))
