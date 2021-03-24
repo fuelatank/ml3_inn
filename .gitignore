@@ -277,3 +277,4 @@ log/qAgents/test/Game/0/p2.log
 log/users/a+b/main.log
 log/users/a+b/p1.log
 log/users/a+b/p2.log
+__pycache__/baseObs.cpython-38.pyc

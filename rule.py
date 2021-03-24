@@ -990,4 +990,4 @@ def getObs(ps):
         (np.array([act, ps.count/200, tscore/20, otscore/20, age/5, oage/5], dtype=np.float32),
             np.array(opcards + opscores + icons + oicons + splays, dtype=np.float32)/5.0,
             bls/5.0, cards, scores,
-            achs), axis=None), zb.reshape(-1), np.array([executing]), []]#), axis=None)
+            achs), axis=None), zb.reshape(-1), np.array([executing]), [], []]#), axis=None)

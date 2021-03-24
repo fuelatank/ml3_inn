@@ -1,31 +1,16 @@
 #TabNine::sem
 
 from rule import *
+from baseObs import BaseObservation
 import numpy as np
 import tensorflow as tf
 
-class Observation:
+class Observation(BaseObservation):
     def __init__(self, data, valids, _type):
         self.data = data
         self.type = _type
         self.valids = valids
-
-    def convert_to_tensor(self):
-        r = []
-        for d in self.data:
-            if isinstance(d, np.ndarray):
-                r.append(tf.constant([d], dtype=tf.float32))
-            else:
-                a = np.zeros((105,))
-                #print(a, d, self.type, self.valids)
-                a[d] = 1
-                r.append(tf.constant([a], dtype=tf.float32))
-        self.data = r
-        #print([i.shape for i in r])
-        #self.valids = tf.constant([self.valids], dtype=tf.float32)
-        #print(self.data)
-        #return self
-
+    
     def __repr__(self):
         return self.type
 
@@ -79,7 +64,8 @@ class Computer(Player):
             l.append(self.cdslen)
         for i in range(mx):
             if l:
-                r = self.agent.step(Observation(obs+[chs], l, 'ac'))
+                obs[3] = chs
+                r = self.agent.step(Observation(obs, l, 'ac'))
             else:
                 return [self.mcds[i] for i in chs]
             #c = self.mcds[r] if r < self.cdslen else None
@@ -125,8 +111,9 @@ class Computer(Player):
             mx = 5
         cs = []
         chs = [0, 1, 2, 3, 4]
-        for i in range(mx):
-            c = self.agent.step(Observation(obs+[cs], chs, 'at'))
+        for _ in range(mx):
+            obs[3] = cs
+            c = self.agent.step(Observation(obs, chs, 'at'))
             if not c:
                 return cs
             cs.append(c)

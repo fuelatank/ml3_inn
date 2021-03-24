@@ -8,6 +8,23 @@ from tensorflow.keras import layers
 
 from env import Observation
 
+def rnn(layer):
+    def f(i, e, c, r, sizes):
+        c = layers.Embedding(106, 4)(c)
+        c = layers.Flatten()(c)
+        e = layers.Embedding(106, 6)(e)
+        e = layers.Flatten()(e)
+        e = layers.Dense(64, activation='relu')(e)
+        x = layers.Concatenate()([i, e, c, r])
+        x = layers.Reshape((1, -1))(x)
+        print(x.shape)
+        for s in sizes:
+            x = layer(s, stateful=True, return_sequences=True)(x)
+            print(x.shape)
+        x = layers.Flatten()(x)
+        return x
+    return f
+
 def lstm(i, e, c, r, sizes):
     c = layers.Embedding(106, 4)(c)
     c = layers.Flatten()(c)
@@ -117,30 +134,23 @@ def buildModel(isize, esize, rnnSizes, rnn='lstm'):
     ynOutput = chooseYn(feature, executingInput)
     ageOutput = chooseAge(feature)
     revealOutput = reveal(feature)
+    outputs = [mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput, ageOutput, revealOutput]
+    indexes = {}
+    lastIndex = 0
+    for o, k in zip(outputs, ['main', 'oc', 'ot', 'ac', 'at', 'yn', 'age', 'r']):
+        indexes[k] = lastIndex
+        lastIndex += o.shape[1]
+    allOutput = layers.Concatenate()([mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput, ageOutput, revealOutput])
 
     rnnModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=feature)
     rnnLayers = rnnModel.layers[-1-len(rnnSizes):-1]
     assert len(rnnLayers) == len(rnnSizes)
     rnnModel.summary()
 
-    mainModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=mainOutput)
-    oneCardModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=oneCardOutput)
-    oneColorModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=oneColorOutput)
-    anyCardModel = keras.Model(inputs=[input1, input2, executingInput, revealInput, chosenInput], outputs=anyCardOutput)
-    anyColorModel = keras.Model(inputs=[input1, input2, executingInput, revealInput, chosenInput], outputs=anyColorOutput)
-    ynModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=ynOutput)
-    ageModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=ageOutput)
-    revealModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=revealOutput)
-
-    #models = [mainModel, ynModel, oneCardModel, oneColorModel, anyCardModel, anyColorModel]
-    modelsDict = {'main': mainModel,'yn': ynModel,
-        'oc': oneCardModel, 'ot': oneColorModel,
-        'ac': anyCardModel, 'at': anyColorModel,
-        'age': ageModel, 'r': revealModel}
     model = keras.Model(inputs=[input1, input2, executingInput, chosenInput, revealInput],
-            outputs=[mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput, ageOutput, revealOutput])
+            outputs=allOutput)
     model.summary()
-    return model, modelsDict, rnnLayers
+    return model, rnnLayers, indexes
 
 def modelTFFunction(model):
     @tf.function
@@ -158,11 +168,8 @@ def modelTFFunctionAction(model):
 
 class QModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm', gamma=0.99):
-        self.model, self.modelsDict, self.rnnLayers = buildModel(isize, esize, rnnSizes, rnn=rnn)
-        self.functionDict = {}
-        for k in self.modelsDict:
-            model = self.modelsDict[k]
-            self.functionDict[k] = modelTFFunction(model)
+        self.model, self.rnnLayers, self.indexes = buildModel(isize, esize, rnnSizes, rnn=rnn)
+        self.func = modelTFFunction(self.model)
         self.optimizer = keras.optimizers.Adam(learning_rate=lr)
         self.gamma = gamma
         self.target = Target(buildModel(isize, esize, rnnSizes, rnn=rnn))
@@ -200,7 +207,7 @@ class QModel:
                 with tf.GradientTape() as tape:
                     y_preds = []
                     for obs, act in xs:
-                        model = self.modelsDict[obs.type]
+                        model = self.model
                         y_pred = model(obs.data)[0][act]
                         y_preds.append(y_pred)
                     loss = tf.reduce_mean((tf.stack(ys) - tf.stack(y_preds)) ** 2)
@@ -213,28 +220,32 @@ class QModel:
                 print('train:', time.time()-t0)
 
     def step(self, obs):
-        model = self.modelsDict[obs.type]
+        model = self.model
         r = model(obs.data)[0]
         return self.argmaxWithValidFilter(r, obs.valids)
 
     def predict_slow(self, obs):
-        model = self.modelsDict[obs.type]
+        model = self.model
         r = model(obs.data)[0]
         r = self.validFilter(r, obs.valids)
         return r
 
-    def predict(self, obs):
-        dense = np.zeros(self.modelsDict[obs.type].output_shape[1:])
-        dense[obs.valids] = 1
-        return self.functionDict[obs.type](obs.data, tf.constant(dense, dtype=tf.float32))
+    def predict(self, obses):
+        dense = np.zeros((len(obses),) + self.model.output_shape[1:])
+        for i, obs in enumerate(obses):
+            index = self.indexes[obs.type]
+            dense[i, [index + v for v in obs.valids]] = 1
+        r = self.func(obs.data, tf.constant(dense, dtype=tf.float32))
+        return r
 
     def updateTarget(self):
         self.target.set(self.model)
 
     def validFilter(self, output, valids, log=False):
         #output = output.numpy()
-        dense = np.zeros(output.shape)
-        dense[valids] = 1
+        #dense = np.zeros(output.shape)
+        #dense[valids] = 1
+        dense = valids
         if log:
             dense = np.log(dense)
             return output + dense

@@ -18,7 +18,7 @@ agent2 = QAgent(model2, buffer2)
 agents = [agent1, agent2]
 player1 = Computer(agent1, name='q1')
 player2 = Computer(agent2, name='q2')
-players = Players(player1, player2, path='log\\qAgents\\test\\0\\')
+#players = Players(player1, player2, path='log\\qAgents\\test\\0\\')
 #rand = Computer(RandomAgent(), name='rand')
 #rand2 = Computer(RandomAgent(), name='rand')
 #players = Players(rand, rand2, path='log\\qAgents\\test\\0\\')
