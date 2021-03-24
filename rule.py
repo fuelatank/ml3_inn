@@ -143,6 +143,8 @@ class Player:
     def __init__(self, name, cds=None, mcds=None):
         self.name = name
         self.cds = cds
+        self.mcds = []
+        self.cdslen = None
         self.cards = []
         self.cages = []
         self.scores = []
@@ -202,6 +204,18 @@ class Player:
     def win(self, name):
         self.ailog('%s wins with %s!', self, name)
         raise WinError(self)
+
+    def drawStack(self, col):
+        raise NotImplementedError
+
+    def chsST(self, cs, ps=True, op=False):
+        raise NotImplementedError
+
+    def chsYn(self):
+        raise NotImplementedError
+
+    def _reveal(self, cs):
+        pass
 
     def maySplay(self, col, d, m=False):
         if m:
@@ -267,7 +281,7 @@ class Player:
                 self.specAchieve(c.i)
 
     def drawMax(self):
-        for cs in (self.cards, self.cages, self.scores, self.sages):
+        for _ in (self.cards, self.cages, self.scores, self.sages):
             #self.adlog(cs)
             pass
         ags = map(lambda c: c[-1].age if c else 0, self.board)
@@ -281,7 +295,7 @@ class Player:
         self.oilog('%s draws a %d', self, c.age)
     
     def draw(self, age, shr=True):
-        for cs in (self.cards, self.cages, self.scores, self.sages):
+        for _ in (self.cards, self.cages, self.scores, self.sages):
             #self.adlog(cs)
             pass
         if list(map(lambda c: c.age, self.cards)) != self.cages:

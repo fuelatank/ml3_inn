@@ -1,6 +1,6 @@
 #TabNine::sem
 
-from rule import *
+from rule import Player, getObs
 from baseObs import BaseObservation
 import numpy as np
 import tensorflow as tf
@@ -27,7 +27,7 @@ class Computer(Player):
         l = [0]
         for age in self.canAchieve():
             l.append(age)
-        for i, c in enumerate(self.board):
+        for _, c in enumerate(self.board):
             if c:
                 l.append(c[-1].color + 10)
         for c in self.cards:
