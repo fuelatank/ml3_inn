@@ -1,18 +1,9 @@
 #TabNine::sem
 
 from rule import Player, getObs
-from baseObs import BaseObservation
 import numpy as np
 import tensorflow as tf
-
-class Observation(BaseObservation):
-    def __init__(self, data, valids, _type):
-        self.data = data
-        self.type = _type
-        self.valids = valids
-    
-    def __repr__(self):
-        return self.type
+from baseObs import Observation
 
 class Computer(Player):
     def __init__(self, agent, name='q', cds=None, mcds=None):

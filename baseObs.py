@@ -1,4 +1,4 @@
-class BaseObservation:
+class Observation:
     def __init__(self, data, valids, _type):
         self.data = data
         self.type = _type

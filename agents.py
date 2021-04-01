@@ -8,26 +8,7 @@ from collections import deque
 import tensorflow as tf
 import numpy as np
 
-INDEXES = {'main': 0, 'oc': 120, 'ot': 226, 'ac': 237, 'at': 343, 'yn': 348, 'age': 350, 'r': 360}
-
-class TFObservation(BaseTFObservation):
-    def convert(self, obs):
-        r = []
-        for d in obs.data:
-            if isinstance(d, np.ndarray):
-                r.append(tf.constant([d], dtype=tf.float32))
-            else:
-                a = np.zeros((105,))
-                #print(a, d, self.type, self.valids)
-                a[d] = 1
-                r.append(tf.constant([a], dtype=tf.float32))
-        self.data = r
-        index = INDEXES[obs.type]
-        valids = np.zeros((361,))
-        for i in obs.valids:
-            valids[i+index] = 1
-        self.valids = tf.constant(valids, dtype=tf.float32)
-        self.typeIndex = INDEXES[obs.type]
+from obs import TFObservation
 
 class QBuffer:
     def __init__(self, size=30, gamma=0.99):
@@ -131,7 +112,7 @@ if __name__ == '__main__':
     print('i:', i.shape, 'e', e.shape, 'v', v)
     obs = Observation([i, e, np.array([45]), [0, 5, 67]], v, 'ac')
     obs = TFObservation(obs)
-    print(qmodel.predict(obs), qmodel.step(obs), qmodel.step(obs), 'ls', qmodel.step(obs))
+    print('qmodel.predict(obs)xxx', qmodel.step(obs), qmodel.step(obs), 'ls', qmodel.step(obs))
     qbuffer = QBuffer(10)
     for i in range(2):
         for j in range(random.randint(50, 100)):
