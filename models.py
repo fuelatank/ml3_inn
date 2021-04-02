@@ -163,7 +163,11 @@ def buildModel(isize, esize, rnnSizes, rnn='lstm', training=False):
     return model, rnnLayers, indexes
 
 def modelTFFunction(model):
-    @tf.function
+    #ispec = tf.TensorSpec(shape=model.input_shape[0], dtype=tf.float32)
+    #espec = tf.TensorSpec(shape=model.input_shape[1], dtype=tf.int32)
+    #specs = [ispec, espec] + \
+    specs = [tf.TensorSpec(shape=s, dtype=tf.float32) for s in model.input_shape]
+    @tf.function(input_signature=(specs, tf.TensorSpec(shape=[None, 361], dtype=tf.float32)))
     def pred(data, denseValids):
         #print(model.name)
         r = model(data)[0]

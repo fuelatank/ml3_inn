@@ -67,4 +67,4 @@ def train(n):
             scores.append(score)
     return scores
 
-scores = train(10)
+scores = train(100)
