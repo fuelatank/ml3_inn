@@ -67,4 +67,5 @@ def train(n):
             scores.append(score)
     return scores
 
-scores = train(100)
+if __name__ == '__main__':
+    scores = train(100)
