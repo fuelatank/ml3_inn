@@ -170,7 +170,8 @@ def modelTFFunction(model):
     @tf.function(input_signature=(specs, tf.TensorSpec(shape=[None, 361], dtype=tf.float32)))
     def pred(data, denseValids):
         #print(model.name)
-        r = model(data)[0]
+        r = model(data)#[0]
+        #tf.print(tf.shape(r))
         return tf.exp(r) * denseValids
     return pred
 
@@ -186,6 +187,7 @@ class QModel:
         self.fitmodel, _, _ = buildModel(isize, esize, rnnSizes, rnn=rnn, training=True)
         self.fitmodel.set_weights(self.model.get_weights())
         self.func = modelTFFunction(self.fitmodel)
+        self.stepfunc = modelTFFunction(self.model)
         self.optimizer = keras.optimizers.Adam(learning_rate=lr)
         self.gamma = gamma
         self.target = Target(buildModel(isize, esize, rnnSizes, rnn=rnn, training=True))
@@ -214,7 +216,7 @@ class QModel:
                 acts = tf.stack([s[1] for s in episode])
                 self.reset_states()
                 #target.reset_states()
-                print('predict:', time.time()-t0)
+                #print('predict:', time.time()-t0)
                 t0 = time.time()
                 with tf.GradientTape() as tape:
                     qs = self.fitmodel(allObs)
@@ -229,12 +231,19 @@ class QModel:
                     if grad is not None)
                 self.reset_states()
                 self.fitmodel.set_weights(self.model.get_weights())
-                print('train:', time.time()-t0)
+                #print('train:', time.time()-t0)
 
+    def step_slow(self, obs):
+        r = self.stepfunc(obs.data, tf.expand_dims(obs.valids, axis=0))[0]
+        return tf.argmax(r)
+    
     def step(self, obs):
-        model = self.model
-        r = model(obs.data)[0]
-        return self.argmaxWithValidFilter(r, obs.valids)
+        return self._step(obs.data, obs.valids)
+    
+    @tf.function
+    def _step(self, data, valids):
+        r = self.stepfunc(data, tf.expand_dims(valids, axis=0))[0]
+        return tf.argmax(r)
 
     def predict_slow(self, obs):
         model = self.model
