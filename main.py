@@ -68,4 +68,5 @@ def train(n):
     return scores
 
 if __name__ == '__main__':
-    scores = train(100)
+    scores = train(10000)
+    print(scores)

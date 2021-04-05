@@ -199,7 +199,7 @@ class QModel:
         for _ in range(loops):
             #print('loop', loop)
             for i, episode in enumerate(data):
-                print('episode', i+1, 'length', len(episode))
+                print(len(episode), end=' ')
                 t0 = time.time()
                 allObs, allValids = stackObs(episode)
                 nqs = target.predict(allObs, allValids)[1:]
@@ -232,6 +232,7 @@ class QModel:
                 self.reset_states()
                 self.fitmodel.set_weights(self.model.get_weights())
                 #print('train:', time.time()-t0)
+        print('')
 
     def step_slow(self, obs):
         r = self.stepfunc(obs.data, tf.expand_dims(obs.valids, axis=0))[0]
