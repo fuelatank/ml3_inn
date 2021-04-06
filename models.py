@@ -211,7 +211,7 @@ class QModel:
                     q_next = tf.gather_nd(nqs, indices)
                 else:
                     q_next = tf.reduce_max(nqs, axis=-1)
-                ys = self.gamma * q_next
+                ys = self.gamma * tf.math.log(q_next)
                 ys = tf.concat([ys, [episode[-1][2]]], axis=0)
                 acts = tf.stack([s[1] for s in episode])
                 self.reset_states()
