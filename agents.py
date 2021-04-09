@@ -2,6 +2,7 @@
 from models import QModel
 from env import Observation
 from baseObs import BaseTFObservation
+import trainconfig as tc
 
 import random
 from collections import deque
@@ -11,7 +12,7 @@ import numpy as np
 from obs import TFObservation
 
 class QBuffer:
-    def __init__(self, size=30, gamma=0.99):
+    def __init__(self, size=tc.BUFFER_SIZE, gamma=tc.GAMMA):
         self.data = []
         self.newEpisode = []
         self.maxsize = size
@@ -50,12 +51,12 @@ class QBuffer:
             l[2] += last * self.gamma
             last = l[2]
 
-    def get(self, num_episodes=2):
+    def get(self, num_episodes=tc.BUFFER_SAMPLE_SIZE):
         return random.sample(self.data, k=min(num_episodes, len(self.data)))
 
 
 class QAgent:
-    def __init__(self, model, buf, n_update_target=10):
+    def __init__(self, model, buf, n_update_target=tc.UPDATE_TARGET_FREQ):
         self.model = model
         #self.target = tf.keras.models.clone_model(self.model)
         self.buf = buf

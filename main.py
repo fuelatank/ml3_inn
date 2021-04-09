@@ -5,14 +5,12 @@ from rule import Players, Game
 from agents import QAgent, QBuffer, RandomAgent
 from models import QModel
 from env import Computer
+import trainconfig as tc
 
-EVAL_N_PER_AGENT = 6#20
-EVAL_FREQ = 50
-
-model1 = QModel(296, 220, [64], 3e-5)
-model2 = QModel(296, 220, [64], 3e-5)
-buffer1 = QBuffer(20)
-buffer2 = QBuffer(20)
+model1 = QModel(296, 220, tc.RNN_LAYERS, tc.LEARNING_RATE)
+model2 = QModel(296, 220, tc.RNN_LAYERS, tc.LEARNING_RATE)
+buffer1 = QBuffer()
+buffer2 = QBuffer()
 agent1 = QAgent(model1, buffer1)
 agent2 = QAgent(model2, buffer2)
 agents = [agent1, agent2]
@@ -24,7 +22,7 @@ player2 = Computer(agent2, name='q2')
 #players = Players(rand, rand2, path='log\\qAgents\\test\\0\\')
 evalgame = Game(path='log\\qAgents\\test\\Game\\0\\')
 evaluators = [Computer(RandomAgent(), name='rand')]
-def train(n):
+def train(n=tc.EPISODES):
     scores = []
     for i in range(n):
         print(f'trajectory {i+1}')
@@ -44,14 +42,14 @@ def train(n):
         agent1.train()
         agent2.train()
         print('train:', time.time()-t0)
-        if i % EVAL_FREQ == 0:
+        if i % tc.EVAL_FREQ == 0:
             print('evaluating...', end='')
             for e in evaluators:
                 win = 0
                 lose = 0
                 for player, agent in zip([player1, player2], agents):
                     agent.collecting = False
-                    for j in range(EVAL_N_PER_AGENT):
+                    for j in range(tc.EVAL_N_PER_AGENT):
                         if j % 2 == 0:
                             r = evalgame.run(e, player)
                         else:
@@ -68,5 +66,5 @@ def train(n):
     return scores
 
 if __name__ == '__main__':
-    scores = train(10000)
+    scores = train()
     print(scores)
