@@ -229,7 +229,7 @@ class QModel:
                     (grad, var) 
                     for (grad, var) in zip(grads, self.model.trainable_variables) 
                     if grad is not None)
-                self.reset_states()
+                #self.reset_states()
                 self.fitmodel.set_weights(self.model.get_weights())
                 #print('train:', time.time()-t0)
         print('')

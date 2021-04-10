@@ -543,7 +543,7 @@ class Player:
         self.ps.dones.clear()
         self.ps.executedcount[c.name] += 1
         if len(list(self.ps.executedcount)) == 105 and self.ps.executedcount.most_common()[-1][1] >= 50:
-            raise Exception()
+            pass#raise Exception()
     
     def ageOf(self, cs):
         if cs is self.cards:
