@@ -164,6 +164,7 @@ class Player:
         self.lgr = None
         self.tucked = 0
         self.scored = 0
+        self.log = None
     
     def __repr__(self):
         return self.name
@@ -657,7 +658,8 @@ class Player:
         self.ps.shared[-1] = True
 
     def ilog(self, msg, *args):
-        self.lgr.info(msg, *args)
+        if self.log:
+            self.lgr.info(msg, *args)
 
     def dlog(self, msg, *args):
         pass#self.lgr.debug(msg, *args)
@@ -669,7 +671,8 @@ class Player:
         pass#self.olgr.debug(msg, *args)
 
     def ailog(self, msg, *args):
-        self.lgr.info(msg, *args)
+        if self.log:
+            self.lgr.info(msg, *args)
         #self.olgr.info(msg, *args)
 
     def adlog(self, msg, *args):
@@ -929,7 +932,7 @@ class Game:
             p.colIcons = {i: [0, 0, 0, 0, 0] for i in ICONS}
         #self.init()
 
-    def run(self, p1, p2, maxStep=500):
+    def run(self, p1, p2, maxStep=500, log=False):
         self.p1 = p1
         self.p2 = p2
         self.p1.op = self.p2
@@ -951,6 +954,8 @@ class Game:
         self.p2.olgr = self.p2olgr
         self.p1.fh = self.p1fh
         self.p2.fh = self.p2fh
+        self.p1.log = log
+        self.p2.log = log
         self.reset()
         self.init()
         for _ in range(maxStep):
