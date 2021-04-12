@@ -8,6 +8,7 @@ from tensorflow.keras import layers
 
 from baseObs import Observation
 from obs import stackObs
+import trainconfig as tc
 
 def rnn(layer):
     def f(i, e, c, r, sizes, training=False):
@@ -15,7 +16,7 @@ def rnn(layer):
         c = layers.Flatten()(c)
         e = layers.Embedding(106, 6)(e)
         e = layers.Flatten()(e)
-        e = layers.Dense(64, activation='relu')(e)
+        e = layers.Dense(64, activation=tc.RNN_ACTIVATION)(e)
         x = layers.Concatenate()([i, e, c, r])
         x = layers.Reshape((1, -1))(x)
         print(x.shape)
@@ -25,36 +26,6 @@ def rnn(layer):
         x = layers.Flatten()(x)
         return x
     return f
-
-def lstm(i, e, c, r, sizes):
-    c = layers.Embedding(106, 4)(c)
-    c = layers.Flatten()(c)
-    e = layers.Embedding(106, 6)(e)
-    e = layers.Flatten()(e)
-    e = layers.Dense(64, activation='relu')(e)
-    x = layers.Concatenate()([i, e, c, r])
-    x = layers.Reshape((1, -1))(x)
-    print(x.shape)
-    for s in sizes:
-        x = layers.LSTM(s, stateful=True, return_sequences=True)(x)
-        print(x.shape)
-    x = layers.Flatten()(x)
-    return x
-
-def gru(i, e, c, r, sizes):
-    c = layers.Embedding(106, 4)(c)
-    c = layers.Flatten()(c)
-    e = layers.Embedding(106, 6)(e)
-    e = layers.Flatten()(e)
-    e = layers.Dense(64, activation='relu')(e)
-    x = layers.Concatenate()([i, e, c, r])
-    x = layers.Reshape((1, -1))(x)
-    print(x.shape)
-    for s in sizes:
-        x = layers.GRU(s, stateful=True, return_sequences=True)(x)
-        print(x.shape)
-    x = layers.Flatten()(x)
-    return x
 lstm = rnn(layers.LSTM)
 gru = rnn(layers.GRU)
 
@@ -192,47 +163,54 @@ class QModel:
         self.gamma = gamma
         self.target = Target(buildModel(isize, esize, rnnSizes, rnn=rnn, training=True))
         self.updateTarget()
+        self._fit = self.fit_maker()
 
     def fit(self, data, target=None, loops=1, double=True):
         if not target:
             target = self.target
         for _ in range(loops):
             #print('loop', loop)
-            for i, episode in enumerate(data):
-                print(len(episode), end=' ')
-                t0 = time.time()
+            for _, episode in enumerate(data):
+                #print(len(episode), end=' ')
+                #t0 = time.time()
+                acts = tf.constant([s[1] for s in episode], dtype=tf.int32)
+                rew = tf.constant([episode[-1][2]], dtype=tf.float32)
                 allObs, allValids = stackObs(episode)
-                nqs = target.predict(allObs, allValids)[1:]
-                if double:
-                    cqs = self.predict(allObs, allValids)[1:]
-                    bestAct = tf.argmax(cqs, axis=-1)
-                    rg = tf.range(len(bestAct), dtype=tf.int64)
-                    indices = tf.stack([rg, bestAct], axis=-1)
-                    q_next = tf.gather_nd(nqs, indices)
-                else:
-                    q_next = tf.reduce_max(nqs, axis=-1)
-                ys = self.gamma * tf.math.log(q_next)
-                ys = tf.concat([ys, [episode[-1][2]]], axis=0)
-                acts = tf.stack([s[1] for s in episode])
-                self.reset_states()
-                #target.reset_states()
-                #print('predict:', time.time()-t0)
-                t0 = time.time()
-                with tf.GradientTape() as tape:
-                    qs = self.fitmodel(allObs)
-                    rg = tf.range(len(acts))#, dtype=tf.int64)
-                    indices = tf.stack([rg, acts], axis=-1)
-                    y_preds = tf.gather_nd(qs, indices)
-                    loss = tf.reduce_mean((tf.stack(ys) - tf.stack(y_preds)) ** 2)
-                grads = tape.gradient(loss, self.fitmodel.trainable_weights)
-                self.optimizer.apply_gradients(
-                    (grad, var) 
-                    for (grad, var) in zip(grads, self.model.trainable_variables) 
-                    if grad is not None)
-                #self.reset_states()
+                self._fit(allObs, allValids, acts, rew, double=tf.constant(double, dtype=tf.bool))
                 self.fitmodel.set_weights(self.model.get_weights())
-                #print('train:', time.time()-t0)
-        print('')
+    
+    def fit_maker(self):
+        @tf.function(input_signature=(
+            [tf.TensorSpec(shape=s, dtype=tf.float32) for s in self.fitmodel.input_shape],
+            tf.TensorSpec(shape=(None, 361), dtype=tf.float32),
+            tf.TensorSpec(shape=(None), dtype=tf.int32),
+            tf.TensorSpec(shape=(1), dtype=tf.float32),
+            tf.TensorSpec(shape=(), dtype=tf.bool)))
+        def f(allObs, allValids, acts, rew, double):
+            target = self.target
+            nqs = target.predict(allObs, allValids)[1:]
+            if double:
+                cqs = self.predict(allObs, allValids)[1:]
+                bestAct = tf.argmax(cqs, axis=-1)
+                rg = tf.range(len(bestAct), dtype=tf.int64)
+                indices = tf.stack([rg, bestAct], axis=-1)
+                q_next = tf.gather_nd(nqs, indices)
+            else:
+                q_next = tf.reduce_max(nqs, axis=-1)
+            ys = self.gamma * tf.math.log(q_next)
+            ys = tf.concat([ys, rew], axis=0)
+            with tf.GradientTape() as tape:
+                qs = self.fitmodel(allObs)
+                rg = tf.range(tf.shape(acts)[0])#, dtype=tf.int64)
+                indices = tf.stack([rg, acts], axis=-1)
+                y_preds = tf.gather_nd(qs, indices)
+                loss = tf.reduce_mean((tf.stack(ys) - tf.stack(y_preds)) ** 2)
+            grads = tape.gradient(loss, self.fitmodel.trainable_weights)
+            self.optimizer.apply_gradients(
+                (grad, var) 
+                for (grad, var) in zip(grads, self.model.trainable_variables) 
+                if grad is not None)
+        return f
 
     def step_slow(self, obs):
         r = self.stepfunc(obs.data, tf.expand_dims(obs.valids, axis=0))[0]
@@ -252,8 +230,9 @@ class QModel:
         r = self.validFilter(r, obs.valids)
         return r
 
+    @tf.function
     def predict(self, data, valids):
-        r = self.func(data, tf.constant(valids, dtype=tf.float32))
+        r = self.func(data, valids)
         return r
 
     def updateTarget(self):
@@ -291,8 +270,9 @@ class Target:
         for layer in self.rnnLayers:
             layer.reset_states()
 
+    @tf.function
     def predict(self, data, valids):
-        r = self.func(data, tf.constant(valids, dtype=tf.float32))
+        r = self.func(data, valids)
         return r
 
     def validFilter(self, output, valids, log=False):
