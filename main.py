@@ -58,7 +58,7 @@ def train(n=tc.EPISODES):
                             lose += 1
                         elif r == player:
                             win += 1
-                        #agent.finish_path(None)
+                        agent.finish_path()
                     agent.collecting = True
                 score = win/(win+lose)
                 print(score)

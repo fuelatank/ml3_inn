@@ -68,8 +68,9 @@ class QAgent:
         self.lastAction = None
         self.collecting = True
 
-    def finish_path(self, r):
-        self.buf.finish_path(r)
+    def finish_path(self, r=None):
+        if self.collecting:
+            self.buf.finish_path(r)
         self.model.reset_states()
 
     def step(self, obs, epsilon=0.2):
