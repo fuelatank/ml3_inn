@@ -16,7 +16,7 @@ def rnn(layer):
         c = layers.Flatten()(c)
         e = layers.Embedding(106, 6)(e)
         e = layers.Flatten()(e)
-        e = layers.Dense(64, activation=tc.RNN_ACTIVATION)(e)
+        e = layers.Dense(64, activation=tc.ACTIVATION)(e)
         x = layers.Concatenate()([i, e, c, r])
         x = layers.Reshape((1, -1))(x)
         print(x.shape)
@@ -30,8 +30,8 @@ lstm = rnn(layers.LSTM)
 gru = rnn(layers.GRU)
 
 def simpleModel(x):
-    x = layers.Dense(128, activation='tanh')(x)
-    x = layers.Dense(128, activation='tanh')(x)
+    x = layers.Dense(128, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(128, activation=tc.ACTIVATION)(x)
     o = layers.Dense(120)(x)
     return o
 
@@ -39,8 +39,8 @@ def chooseOneCard(x, c):
     c = layers.Embedding(106, 4)(c)
     c = layers.Flatten()(c)
     x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(106)(x)
     return o
 
@@ -48,8 +48,8 @@ def chooseOneColor(x, c):
     c = layers.Embedding(106, 4)(c)
     c = layers.Flatten()(c)
     x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(11)(x) # opponent's board
     return o
 
@@ -57,8 +57,8 @@ def chooseYn(x, c):
     c = layers.Embedding(106, 4)(c)
     c = layers.Flatten()(c)
     x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(2)(x)
     return o
 
@@ -66,8 +66,8 @@ def chooseAnyCard(x, e, c):
     e = layers.Embedding(106, 4)(e)
     e = layers.Flatten()(e)
     x = layers.Concatenate()([x, e, c])
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(106)(x)
     return o
 
@@ -75,14 +75,14 @@ def chooseAnyColor(x, e, c):
     e = layers.Embedding(106, 4)(e)
     e = layers.Flatten()(e)
     x = layers.Concatenate()([x, e, c])
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(5)(x) # can't pass
     return o
 
 def chooseAge(x):
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(10)(x)
     return o
 
