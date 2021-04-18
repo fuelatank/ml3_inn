@@ -16,7 +16,8 @@ def rnn(layer):
         c = layers.Flatten()(c)
         e = layers.Embedding(106, 6)(e)
         e = layers.Flatten()(e)
-        e = layers.Dense(64, activation=tc.ACTIVATION)(e)
+        e = layers.Dense(48, activation=tc.ACTIVATION)(e)
+        r = layers.Dense(16, activation=tc.ACTIVATION)(r)
         x = layers.Concatenate()([i, e, c, r])
         x = layers.Reshape((1, -1))(x)
         print(x.shape)
@@ -65,6 +66,7 @@ def chooseYn(x, c):
 def chooseAnyCard(x, e, c):
     e = layers.Embedding(106, 4)(e)
     e = layers.Flatten()(e)
+    c = layers.Dense(16, activation=tc.ACTIVATION)(c)
     x = layers.Concatenate()([x, e, c])
     x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     x = layers.Dense(32, activation=tc.ACTIVATION)(x)
@@ -74,6 +76,7 @@ def chooseAnyCard(x, e, c):
 def chooseAnyColor(x, e, c):
     e = layers.Embedding(106, 4)(e)
     e = layers.Flatten()(e)
+    c = layers.Dense(16, activation=tc.ACTIVATION)(c)
     x = layers.Concatenate()([x, e, c])
     x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     x = layers.Dense(32, activation=tc.ACTIVATION)(x)
