@@ -99,6 +99,13 @@ class QAgent:
             self.count = 0
             self.model.updateTarget()
 
+class ModelAgent:
+    def __init__(self, model):
+        self.model = model
+    
+    def set_weights(self, w):
+        self.model.set_weights(w)
+
 class RandomAgent:
     def __init__(self):
         self.trainable = True
