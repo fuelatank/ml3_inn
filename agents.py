@@ -78,6 +78,7 @@ class QAgent:
             action = random.choice(obs.valids)
             tfobs = TFObservation(obs)
             r = action
+            action += tfobs.typeIndex
         else:
             tfobs = TFObservation(obs)
             action = int(self.model.step(tfobs))
