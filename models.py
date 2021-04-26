@@ -8,6 +8,7 @@ from tensorflow.keras import layers
 
 from baseObs import Observation
 from obs import stackObs
+from weights import NPWeights
 import trainconfig as tc
 
 def rnn(layer):
@@ -171,6 +172,12 @@ class PolicyModel:
         r = self.stepfunc(data, tf.expand_dims(valids, axis=0))[0]
         probs = r / tf.reduce_sum(r)
         return probs
+    
+    def get_weights(self):
+        return NPWeights.from_keras_model(self.model)
+    
+    def set_weights(self, w):
+        self.model.set_weights(w.weights)
 
 class QModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm', gamma=0.99):
