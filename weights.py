@@ -1,6 +1,8 @@
 import numpy as np
 import random
 
+import trainconfig as tc
+
 class NPWeights:
     def __init__(self, names, weights):
         self.names = names
@@ -15,12 +17,12 @@ class NPWeights:
     def copy(self):
         return NPWeights(self.names, [w.copy() for w in self.weights])
     
-    def noise_copy(self, scale=0.001, num_layers=1):
+    def noise_copy(self, scale=tc.WEIGHT_SCALE, num_layers=tc.NUM_MUTATE_LAYERS):
         noise_layers = random.sample(self.weights, k=num_layers)
         new_weights = [w + np.random.normal(0, scale, w.shape) \
             if w in noise_layers else w.copy() \
             for w in self.weights]
         return NPWeights(self.names, new_weights)
     
-    def random_copy(self, scale=0.001):
+    def random_copy(self, scale=tc.WEIGHT_SCALE_INIT):
         return NPWeights(self.names, [np.random.normal(0, scale, w.shape) for w in self.weights])
