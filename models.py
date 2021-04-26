@@ -160,7 +160,6 @@ class PolicyModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm'):
         self.model, self.rnnLayers, self.indexes = buildModel(isize, esize, rnnSizes, rnn=rnn)
         self.stepfunc = modelTFFunction(self.model)
-        self.optimizer = keras.optimizers.Adam(learning_rate=lr)
     
     def step(self, obs):
         probs = self._step(obs.data, obs.valids).numpy()
