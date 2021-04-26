@@ -155,6 +155,23 @@ def modelTFFunctionAction(model):
         return model(data)[0][act]
     return pred
 
+class PolicyModel:
+    def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm'):
+        self.model, self.rnnLayers, self.indexes = buildModel(isize, esize, rnnSizes, rnn=rnn)
+        self.stepfunc = modelTFFunction(self.model)
+        self.optimizer = keras.optimizers.Adam(learning_rate=lr)
+    
+    def step(self, obs):
+        probs = self._step(obs.data, obs.valids).numpy()
+        action = np.random.choice(361, p=probs)
+        return action
+    
+    @tf.function
+    def _step(self, data, valids):
+        r = self.stepfunc(data, tf.expand_dims(valids, axis=0))[0]
+        probs = r / tf.reduce_sum(r)
+        return probs
+
 class QModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm', gamma=0.99):
         self.model, self.rnnLayers, self.indexes = buildModel(isize, esize, rnnSizes, rnn=rnn)
