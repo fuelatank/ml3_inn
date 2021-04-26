@@ -104,6 +104,12 @@ class ModelAgent:
     def __init__(self, model):
         self.model = model
     
+    def step(self, obs):
+        tfobs = TFObservation(obs)
+        action = int(self.model.step(tfobs))
+        r = action - tfobs.typeIndex
+        return r
+    
     def set_weights(self, w):
         self.model.set_weights(w)
 
