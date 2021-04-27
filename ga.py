@@ -20,7 +20,7 @@ evaluators = [Computer(RandomAgent(), name='rand')]
 sample_weights = model1.get_weights()
 
 population = [sample_weights.random_copy() for _ in range(tc.POPULATION_SIZE)]
-winning_streak = [0 for i in range(TC.POPULATION_SIZE)]
+winning_streak = [0 for i in range(tc.POPULATION_SIZE)]
 
 def train(n=tc.GA_EPISODES):
     scores = []
