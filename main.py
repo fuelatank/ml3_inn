@@ -17,6 +17,7 @@ agent2 = QAgent(model2, buffer2)
 agents = [agent1, agent2]
 player1 = Computer(agent1, name='q1')
 player2 = Computer(agent2, name='q2')
+players = [player1, player2]
 #players = Players(player1, player2, path='log\\qAgents\\test\\0\\')
 #rand = Computer(RandomAgent(), name='rand')
 #rand2 = Computer(RandomAgent(), name='rand')
@@ -44,7 +45,7 @@ def train(n=tc.EPISODES):
         agent2.train()
         print('train:', time.time()-t0)
         if i % tc.EVAL_FREQ == 0:
-            score = evaluate([player1, player2], agents, evaluators, tc.EVAL_N_PER_AGENT, evalgame)
+            score = evaluate(players, agents, evaluators, tc.EVAL_N_PER_AGENT, evalgame)
             scores.append(score)
     return scores
 
