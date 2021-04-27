@@ -5,6 +5,7 @@ from rule import Players, Game
 from agents import QAgent, QBuffer, RandomAgent
 from models import QModel
 from env import Computer
+from eval import evaluate
 import trainconfig as tc
 
 model1 = QModel(296, 220, tc.RNN_LAYERS, tc.LEARNING_RATE)
@@ -43,25 +44,7 @@ def train(n=tc.EPISODES):
         agent2.train()
         print('train:', time.time()-t0)
         if i % tc.EVAL_FREQ == 0:
-            print('evaluating...', end='')
-            for e in evaluators:
-                win = 0
-                lose = 0
-                for player, agent in zip([player1, player2], agents):
-                    agent.collecting = False
-                    for j in range(tc.EVAL_N_PER_AGENT):
-                        if j % 2 == 0:
-                            r = evalgame.run(e, player)
-                        else:
-                            r = evalgame.run(player, e)
-                        if r == e:
-                            lose += 1
-                        elif r == player:
-                            win += 1
-                        agent.finish_path()
-                    agent.collecting = True
-                score = win/(win+lose)
-                print(score)
+            score = evaluate([player1, player2], agents, evaluators, tc.EVAL_N_PER_AGENT, evalgame)
             scores.append(score)
     return scores
 
