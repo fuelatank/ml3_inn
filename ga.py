@@ -48,3 +48,7 @@ def train(n=tc.GA_EPISODES):
             score = evaluate([player1], [agent1], evaluators, tc.GA_EVAL_PER_AGENT, evalgame)
             scores.append(score)
     return scores
+
+if __name__ == "__main__":
+    scores = train()
+    print(scores)
