@@ -30,12 +30,18 @@ def train(n=tc.GA_EPISODES):
         w2 = population[i2]
         model1.set_weights(w1)
         model2.set_weights(w2)
-        r = evalgame.run(player1, player2)
-        if r == player1:
+        s = 0
+        for _ in range(tc.GA_ROUNDS):
+            r = evalgame.run(player1, player2)
+            if r == player1:
+                s += 1
+            elif r == player2:
+                s -= 1
+        if s > 0:
             population[i2] = w1.noise_copy()
             winning_streak[i2] = winning_streak[i1]
             winning_streak[i1] += 1
-        elif r == player2:
+        elif s < 0:
             population[i1] = w2.noise_copy()
             winning_streak[i1] = winning_streak[i2]
             winning_streak[i2] += 1
