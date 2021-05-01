@@ -73,7 +73,7 @@ class Spec:
 
 mainspecs = list(map(lambda i, name, cond: Spec(name, i, cond=cond), range(5), spec_names, conds))
 l = list(zip(ages, colors, ics, funcs, dems, idxs))
-maincds = list(map(lambda c: Card(str(c[3][0])[10:-23], c[0], c[1], c[2], c[3], c[4], c[5]), l))
+maincds = list(map(lambda c: Card(c[3][0].__name__, c[0], c[1], c[2], c[3], c[4], c[5]), l))
 #print([[c, c.icons, c.splayIcons] for c in random.sample(maincds, 15)])
 mainacds = {}
 lst = 0
