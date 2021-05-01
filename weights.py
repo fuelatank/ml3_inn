@@ -18,10 +18,10 @@ class NPWeights:
         return NPWeights(self.names, [w.copy() for w in self.weights])
     
     def noise_copy(self, scale=tc.WEIGHT_SCALE, num_layers=tc.NUM_MUTATE_LAYERS):
-        noise_layers = random.sample(self.weights, k=num_layers)
+        noise_layers = random.sample(self.names, k=num_layers)
         new_weights = [w + np.random.normal(0, scale, w.shape) \
-            if w in noise_layers else w.copy() \
-            for w in self.weights]
+            if n in noise_layers else w.copy() \
+            for n, w in zip(self.names, self.weights)]
         return NPWeights(self.names, new_weights)
     
     def random_copy(self, scale=tc.WEIGHT_SCALE_INIT):
