@@ -54,8 +54,17 @@ class QBuffer:
     def get(self, num_episodes=tc.BUFFER_SAMPLE_SIZE):
         return random.sample(self.data, k=min(num_episodes, len(self.data)))
 
+class BaseAgent:
+    def __init__(self):
+        pass
 
-class QAgent:
+    def step(self, obs):
+        raise NotImplementedError
+    
+    def finish_path(self, r=None):
+        pass
+
+class QAgent(BaseAgent):
     def __init__(self, model, buf, n_update_target=tc.UPDATE_TARGET_FREQ):
         self.model = model
         #self.target = tf.keras.models.clone_model(self.model)
@@ -100,8 +109,9 @@ class QAgent:
             self.count = 0
             self.model.updateTarget()
 
-class ModelAgent:
+class ModelAgent(BaseAgent):
     def __init__(self, model):
+        super(ModelAgent, self).__init__()
         self.model = model
     
     def step(self, obs):
