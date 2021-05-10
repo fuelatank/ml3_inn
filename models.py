@@ -129,48 +129,12 @@ def rnn(layer):
 
 rnns = {'lstm': lstm, 'gru': gru}
 
-def buildModel(isize, esize, rnnSizes, rnn='lstm', training=False):
-    if training:
-        input1 = keras.Input(shape=(isize,))
-        input2 = keras.Input(shape=(esize,))
-        executingInput = keras.Input(shape=(1,))
-        chosenInput = keras.Input(shape=(105,))
-        revealInput = keras.Input(shape=(105,))
-    else:
-        input1 = keras.Input(batch_shape=(1, isize))
-        input2 = keras.Input(batch_shape=(1, esize))
-        executingInput = keras.Input(batch_shape=(1, 1))
-        chosenInput = keras.Input(batch_shape=(1, 105))
-        revealInput = keras.Input(batch_shape=(1, 105))
-    rnnfn = rnns[rnn] if rnn in rnns else None
-    feature = rnnfn(input1, input2, executingInput, revealInput, rnnSizes, training=training)
-    indexes = {}
-    lastIndex = 0
-    for o, k in zip(outputs, ['main', 'oc', 'ot', 'ac', 'at', 'yn', 'age', 'r']):
-        indexes[k] = lastIndex
-        lastIndex += o.shape[1]
-    rnnModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=feature)
-    rnnLayers = rnnModel.layers[-1-len(rnnSizes):-1]
-    assert len(rnnLayers) == len(rnnSizes)
-    rnnModel.summary()
+def buildModel(isize, esize, rnnSizes, rnn='lstm'):
+    model = BasicModel(isize, esize,  rnnSizes, rnn=rnn)
+    return model
 
-    model = keras.Model(inputs=[input1, input2, executingInput, chosenInput, revealInput],
-            outputs=allOutput)
-    #model.summary()
-    return model, rnnLayers, indexes
-
-def modelTFFunction(model):
-    #ispec = tf.TensorSpec(shape=model.input_shape[0], dtype=tf.float32)
-    #espec = tf.TensorSpec(shape=model.input_shape[1], dtype=tf.int32)
-    #specs = [ispec, espec] + \
-    specs = [tf.TensorSpec(shape=s, dtype=tf.float32) for s in model.input_shape]
-    @tf.function(input_signature=(specs, tf.TensorSpec(shape=[None, 361], dtype=tf.float32)))
-    def pred(data, denseValids):
-        #print(model.name)
-        r = model(data)#[0]
-        #tf.print(tf.shape(r))
-        return tf.exp(r) * denseValids
-    return pred
+def validFilter(logits, denseValids):
+    return torch.exp(logits) * denseValids
 
 def modelTFFunctionAction(model):
     @tf.function
@@ -180,18 +144,18 @@ def modelTFFunctionAction(model):
 
 class PolicyModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm'):
-        self.model, self.rnnLayers, self.indexes = buildModel(isize, esize, rnnSizes, rnn=rnn)
-        self.stepfunc = modelTFFunction(self.model)
+        self.model = buildModel(isize, esize, rnnSizes, rnn=rnn)
     
     def step(self, obs):
         probs = self._step(obs.data, obs.valids).numpy()
         action = np.random.choice(361, p=probs)
         return action
     
-    @tf.function
     def _step(self, data, valids):
-        r = self.stepfunc(data, tf.expand_dims(valids, axis=0))[0]
-        probs = r / tf.reduce_sum(r)
+        with torch.no_grad():
+            logits, self.states = self.model({'x': data, 'hs': self.states})
+            r = validFilter(logits, torch.unsqueeze(valids, 0))
+            probs = r / torch.sum(r)
         return probs
     
     def get_weights(self):
@@ -199,6 +163,9 @@ class PolicyModel:
     
     def set_weights(self, w):
         self.model.set_weights(w.weights)
+    
+    def reset_states(self):
+        self.states = None
 
 class QModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm', gamma=0.99):
