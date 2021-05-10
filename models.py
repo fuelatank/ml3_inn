@@ -2,14 +2,112 @@
 import time
 
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+import torch
+from torch import nn
+from torch.nn import functional as F
 
 from baseObs import Observation
 from obs import stackObs
 from weights import NPWeights
 import trainconfig as tc
+
+rnns = {'lstm': nn.LSTM, 'gru': nn.GRU}
+activations = {'relu': F.relu, 'tanh': F.tanh}
+
+class ChooseModel(nn.Module):
+    def __init__(self, inputSize, outputSize, executing=False, chosen=False, hidden=32, activation=tc.ACTIVATION):
+        super(ChooseModel, self).__init__()
+        self.inputSize = inputSize
+        self.outputSize = outputSize
+        self.executing = executing
+        self.chosen = chosen
+        self.a = activations[activation]
+        extraSize = 0
+        if self.executing:
+            self.embed = nn.Embedding(106, 4)
+            extraSize += 4
+        if self.chosen:
+            self.chosenLinear = nn.Linear(105, 16)
+            extraSize += 16
+        self.linear1 = nn.Linear(self.inputSize+extraSize, hidden)
+        self.linear2 = nn.Linear(hidden, hidden)
+        self.linear3 = nn.Linear(hidden, self.outputSize)
+    
+    def forward(self, x):
+        if self.chosen:
+            mainInput, eInput, cInput = x
+            e = self.embed(eInput)#F.relu/tanh!
+            c = self.a(self.chosenLinear(cInput))
+            x = torch.cat([mainInput, e, c], dim=1)
+        elif self.executing:
+            mainInput, eInput = x
+            e = self.embed(eInput)
+            x = torch.cat([mainInput, e], dim=1)
+        x = self.a(self.linear1(x))
+        x = self.a(self.linear2(x))
+        x = self.linear3(x)
+        return x
+
+class BasicModel(nn.Module):
+    def __init__(self, isize, esize, rnnSizes, rnn='lstm', activation=tc.ACTIVATION):
+        super(BasicModel, self).__init__()
+        self.isize = isize
+        self.esize = esize
+        self.rnnSizes = rnnSizes
+        self.rnnFunc = rnns[rnn]
+        self.a = activations[activation]
+        self.buildModel()
+    
+    def buildModel(self):
+        self.xEmbed = nn.Embedding(106, 4)
+        self.eEmbed = nn.Embedding(106, 6)
+        self.eLinear = nn.Linear(self.esize*6, 48)
+        self.rLinear = nn.Linear(105, 16)
+        self.rnnLayers = []
+        rnnInputLength = 48+16+self.isize+4
+        for size in self.rnnSizes:
+            l = nn.LSTM(rnnInputLength, size)
+            self.rnnLayers.append(l)
+            rnnInputLength = size
+        self.main = ChooseModel(rnnInputLength, 120, hidden=128, activation=self.a)
+        self.oc = ChooseModel(rnnInputLength, 106, executing=True, activation=self.a)
+        self.ot = ChooseModel(rnnInputLength, 11, executing=True, activation=self.a)
+        self.ac = ChooseModel(rnnInputLength, 106, executing=True, chosen=True, activation=self.a)
+        self.at = ChooseModel(rnnInputLength, 5, executing=True, chosen=True, activation=self.a)
+        self.yn = ChooseModel(rnnInputLength, 2, executing=True, activation=self.a)
+        self.age = ChooseModel(rnnInputLength, 10, activation=self.a)
+        self.r = ChooseModel(rnnInputLength, 1, hidden=1, activation=self.a)
+    
+    def forward(self, x, hs=None):
+        normal, embedRequired, executing, chosen, reveal = x
+        x = self.xEmbed(executing)
+        x = x.view(x.size()[0], -1)
+        e = self.eEmbed(embedRequired)
+        e = e.view(e.size()[0], -1)
+        e = self.a(self.eLinear(e))
+        r = self.a(self.rLinear(reveal))
+        x = torch.cat([normal, e, x, r])
+        x = torch.unsqueeze(x, 1)
+        nhs = []
+        if torch.is_grad_enabled():
+            for l in self.rnnLayers:
+                x, nh = l(x)
+                nhs.append(nh)
+        else:
+            for h, l in zip(hs, self.rnnLayers):
+                x, nh = l(x, h)
+                nhs.append(nh)
+        x = x.view(x.size()[0], -1)
+        main = self.main(x)
+        oc = self.oc(x, executing)
+        ot = self.ot(x, executing)
+        ac = self.ac(x, executing, chosen)
+        at = self.at(x, executing, chosen)
+        yn = self.yn(x, executing)
+        age = self.age(x)
+        r = self.r(x)
+        x = torch.cat([main, oc, ot, ac, at, yn, age, r], 1)
+        return x, nhs
 
 def rnn(layer):
     def f(i, e, c, r, sizes, training=False):
@@ -28,71 +126,6 @@ def rnn(layer):
         x = layers.Flatten()(x)
         return x
     return f
-lstm = rnn(layers.LSTM)
-gru = rnn(layers.GRU)
-
-def simpleModel(x):
-    x = layers.Dense(128, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(128, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(120)(x)
-    return o
-
-def chooseOneCard(x, c):
-    c = layers.Embedding(106, 4)(c)
-    c = layers.Flatten()(c)
-    x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(106)(x)
-    return o
-
-def chooseOneColor(x, c):
-    c = layers.Embedding(106, 4)(c)
-    c = layers.Flatten()(c)
-    x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(11)(x) # opponent's board
-    return o
-
-def chooseYn(x, c):
-    c = layers.Embedding(106, 4)(c)
-    c = layers.Flatten()(c)
-    x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(2)(x)
-    return o
-
-def chooseAnyCard(x, e, c):
-    e = layers.Embedding(106, 4)(e)
-    e = layers.Flatten()(e)
-    c = layers.Dense(16, activation=tc.ACTIVATION)(c)
-    x = layers.Concatenate()([x, e, c])
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(106)(x)
-    return o
-
-def chooseAnyColor(x, e, c):
-    e = layers.Embedding(106, 4)(e)
-    e = layers.Flatten()(e)
-    c = layers.Dense(16, activation=tc.ACTIVATION)(c)
-    x = layers.Concatenate()([x, e, c])
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(5)(x) # can't pass
-    return o
-
-def chooseAge(x):
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(10)(x)
-    return o
-
-def reveal(x):
-    o = layers.Dense(1)(x)
-    return o
 
 rnns = {'lstm': lstm, 'gru': gru}
 
@@ -111,22 +144,11 @@ def buildModel(isize, esize, rnnSizes, rnn='lstm', training=False):
         revealInput = keras.Input(batch_shape=(1, 105))
     rnnfn = rnns[rnn] if rnn in rnns else None
     feature = rnnfn(input1, input2, executingInput, revealInput, rnnSizes, training=training)
-    mainOutput = simpleModel(feature)
-    oneCardOutput = chooseOneCard(feature, executingInput)
-    oneColorOutput = chooseOneColor(feature, executingInput)
-    anyCardOutput = chooseAnyCard(feature, executingInput, chosenInput)
-    anyColorOutput = chooseAnyColor(feature, executingInput, chosenInput)
-    ynOutput = chooseYn(feature, executingInput)
-    ageOutput = chooseAge(feature)
-    revealOutput = reveal(feature)
-    outputs = [mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput, ageOutput, revealOutput]
     indexes = {}
     lastIndex = 0
     for o, k in zip(outputs, ['main', 'oc', 'ot', 'ac', 'at', 'yn', 'age', 'r']):
         indexes[k] = lastIndex
         lastIndex += o.shape[1]
-    allOutput = layers.Concatenate()([mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput, ageOutput, revealOutput])
-
     rnnModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=feature)
     rnnLayers = rnnModel.layers[-1-len(rnnSizes):-1]
     assert len(rnnLayers) == len(rnnSizes)
