@@ -116,12 +116,6 @@ def buildModel(isize, esize, rnnSizes, rnn='lstm'):
 def validFilter(logits, denseValids):
     return torch.exp(logits) * denseValids
 
-def modelTFFunctionAction(model):
-    @tf.function
-    def pred(data, act):
-        return model(data)[0][act]
-    return pred
-
 class PolicyModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm'):
         self.model = buildModel(isize, esize, rnnSizes, rnn=rnn)
