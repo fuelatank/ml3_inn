@@ -12,7 +12,7 @@ from weights import NPWeights
 import trainconfig as tc
 
 rnns = {'lstm': nn.LSTM, 'gru': nn.GRU}
-activations = {'relu': F.relu, 'tanh': F.tanh}
+activations = {'relu': torch.relu, 'tanh': torch.tanh}
 
 class ChooseModel(nn.Module):
     def __init__(self, inputSize, outputSize, executing=False, chosen=False, hidden=32, activation=tc.ACTIVATION):
