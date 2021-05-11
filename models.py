@@ -109,26 +109,6 @@ class BasicModel(nn.Module):
         x = torch.cat([main, oc, ot, ac, at, yn, age, r], 1)
         return x, nhs
 
-def rnn(layer):
-    def f(i, e, c, r, sizes, training=False):
-        c = layers.Embedding(106, 4)(c)
-        c = layers.Flatten()(c)
-        e = layers.Embedding(106, 6)(e)
-        e = layers.Flatten()(e)
-        e = layers.Dense(48, activation=tc.ACTIVATION)(e)
-        r = layers.Dense(16, activation=tc.ACTIVATION)(r)
-        x = layers.Concatenate()([i, e, c, r])
-        x = layers.Reshape((1, -1))(x)
-        print(x.shape)
-        for s in sizes:
-            x = layer(s, stateful=(not training), return_sequences=True)(x)
-            print(x.shape)
-        x = layers.Flatten()(x)
-        return x
-    return f
-
-rnns = {'lstm': lstm, 'gru': gru}
-
 def buildModel(isize, esize, rnnSizes, rnn='lstm'):
     model = BasicModel(isize, esize,  rnnSizes, rnn=rnn)
     return model
