@@ -169,13 +169,10 @@ class PolicyModel:
 
 class QModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm', gamma=0.99):
-        self.model, self.rnnLayers, self.indexes = buildModel(isize, esize, rnnSizes, rnn=rnn)
-        self.fitmodel, _, _ = buildModel(isize, esize, rnnSizes, rnn=rnn, training=True)
-        self.fitmodel.set_weights(self.model.get_weights())
-        self.func = modelTFFunction(self.fitmodel)
-        self.stepfunc = modelTFFunction(self.model)
-        self.optimizer = keras.optimizers.Adam(learning_rate=lr)
+        self.model = buildModel(isize, esize, rnnSizes, rnn=rnn)
+        self.optimizer = torch.optim.Adam(self.model.parameters, lr=lr)
         self.gamma = gamma
+        self.states = None
         self.target = Target(buildModel(isize, esize, rnnSizes, rnn=rnn, training=True))
         self.updateTarget()
         self._fit = self.fit_maker()
@@ -195,109 +192,60 @@ class QModel:
                 self.fitmodel.set_weights(self.model.get_weights())
     
     def fit_maker(self):
-        @tf.function(input_signature=(
-            [tf.TensorSpec(shape=s, dtype=tf.float32) for s in self.fitmodel.input_shape],
-            tf.TensorSpec(shape=(None, 361), dtype=tf.float32),
-            tf.TensorSpec(shape=(None), dtype=tf.int32),
-            tf.TensorSpec(shape=(1), dtype=tf.float32),
-            tf.TensorSpec(shape=(), dtype=tf.bool)))
         def f(allObs, allValids, acts, rew, double):
             target = self.target
-            nqs = target.predict(allObs, allValids)[1:]
-            if double:
-                cqs = self.predict(allObs, allValids)[1:]
-                bestAct = tf.argmax(cqs, axis=-1)
-                rg = tf.range(len(bestAct), dtype=tf.int64)
-                indices = tf.stack([rg, bestAct], axis=-1)
-                q_next = tf.gather_nd(nqs, indices)
-            else:
-                q_next = tf.reduce_max(nqs, axis=-1)
-            ys = self.gamma * tf.math.log(q_next)
-            ys = tf.concat([ys, rew], axis=0)
-            with tf.GradientTape() as tape:
-                qs = self.fitmodel(allObs)
-                rg = tf.range(tf.shape(acts)[0])#, dtype=tf.int64)
-                indices = tf.stack([rg, acts], axis=-1)
-                y_preds = tf.gather_nd(qs, indices)
-                loss = tf.reduce_mean((tf.stack(ys) - tf.stack(y_preds)) ** 2)
-            grads = tape.gradient(loss, self.fitmodel.trainable_weights)
-            self.optimizer.apply_gradients(
-                (grad, var) 
-                for (grad, var) in zip(grads, self.model.trainable_variables) 
-                if grad is not None)
+            with torch.no_grad():
+                nqs = target.predict(allObs, allValids)[1:]
+                if double:
+                    cqs = self.predict(allObs, allValids)[1:]
+                    bestAct = torch.argmax(cqs, dim=1, keepdims=True)
+                    q_next = torch.squeeze(torch.gather(nqs, bestAct))
+                else:
+                    q_next = torch.max(nqs, dim=1)
+                ys = self.gamma * torch.log(q_next)
+                ys = torch.cat([ys, rew], dim=0)
+            qs, _ = self.model(allObs)
+            y_preds = torch.squeeze(torch.gather(qs, torch.unsqueeze(acts, 1)))
+            loss = torch.mean((ys - y_preds) ** 2)
+            loss.backward()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
         return f
-
-    def step_slow(self, obs):
-        r = self.stepfunc(obs.data, tf.expand_dims(obs.valids, axis=0))[0]
-        return tf.argmax(r)
     
     def step(self, obs):
-        return self._step(obs.data, obs.valids)
-    
-    @tf.function
-    def _step(self, data, valids):
-        r = self.stepfunc(data, tf.expand_dims(valids, axis=0))[0]
-        return tf.argmax(r)
-
-    def predict_slow(self, obs):
-        model = self.model
-        r = model(obs.data)[0]
-        r = self.validFilter(r, obs.valids)
+        with torch.no_grad():
+            r = self._step(obs.data, obs.valids)
         return r
+    
+    def _step(self, data, valids):
+        logits, self.states = self.model({'x': data, 'hs': self.states})
+        r = validFilter(logits, torch.unsqueeze(valids, 0))
+        return torch.argmax(r)
 
-    @tf.function
     def predict(self, data, valids):
-        r = self.func(data, valids)
+        r, _ = self.model({'x': data})
         return r
 
     def updateTarget(self):
         self.target.set(self.model)
 
-    def validFilter(self, output, valids, log=False):
-        #output = output.numpy()
-        #dense = np.zeros(output.shape)
-        #dense[valids] = 1
-        dense = valids
-        if log:
-            dense = np.log(dense)
-            return output + dense
-        else:
-            return tf.exp(output) * dense
-
     def argmaxWithValidFilter(self, output, valids):
-        return tf.argmax(self.validFilter(output, valids), axis=-1)
+        return torch.argmax(self.validFilter(output, valids), dim=1)
 
     def reset_states(self):
-        for layer in self.rnnLayers:
-            layer.reset_states()
+        self.states = None
 
 class Target:
     def __init__(self, model):
-        self.model, self.modelsDict, self.rnnLayers = model
-        self.func = modelTFFunction(self.model)
-        #self.modelsDict = dict_
+        self.model = model
         #self.rnnLayers = rnnLayers
 
     def set(self, model):
-        self.model.set_weights(model.get_weights())
-    
-    def reset_states(self):
-        for layer in self.rnnLayers:
-            layer.reset_states()
+        self.model.load_state_dict(model.state_dict())
 
-    @tf.function
     def predict(self, data, valids):
-        r = self.func(data, valids)
+        r, _ = self.model({'x': data})
         return r
-
-    def validFilter(self, output, valids, log=False):
-        output = output.numpy()
-        dense = np.zeros(output.shape)
-        dense[valids] = 1
-        if log:
-            return output + valids[-1]
-        else:
-            return tf.exp(output) * dense
 
 '''qmodel = QModel(300, 20, [128, 128], 1e-4, rnn='gru')
 i = tf.random.normal((1, 300))
