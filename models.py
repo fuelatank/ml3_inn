@@ -229,9 +229,6 @@ class QModel:
     def updateTarget(self):
         self.target.set(self.model)
 
-    def argmaxWithValidFilter(self, output, valids):
-        return torch.argmax(self.validFilter(output, valids), dim=1)
-
     def reset_states(self):
         self.states = None
 
