@@ -165,11 +165,10 @@ class QModel:
             for _, episode in enumerate(data):
                 #print(len(episode), end=' ')
                 #t0 = time.time()
-                acts = tf.constant([s[1] for s in episode], dtype=tf.int32)
-                rew = tf.constant([episode[-1][2]], dtype=tf.float32)
+                acts = torch.tensor([s[1] for s in episode], dtype=torch.int32)
+                rew = torch.tensor([episode[-1][2]], dtype=torch.float32)
                 allObs, allValids = stackObs(episode)
-                self._fit(allObs, allValids, acts, rew, double=tf.constant(double, dtype=tf.bool))
-                self.fitmodel.set_weights(self.model.get_weights())
+                self._fit(allObs, allValids, acts, rew, double=double)
     
     def fit_maker(self):
         def f(allObs, allValids, acts, rew, double):
