@@ -7,7 +7,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from baseObs import Observation
-from obs import stackObs
+from obs import stackObsTorch as stackObs
 from weights import NPWeights
 import trainconfig as tc
 

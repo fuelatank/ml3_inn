@@ -30,3 +30,10 @@ def stackObs(obses):
         datas.append(tf.concat([obs[0].data[i] for obs in obses], 0))
     valids = tf.stack([obs[0].valids for obs in obses])
     return datas, valids
+
+def stackObsTorch(obses):
+    datas = []
+    for i in range(len(obses[0][0].data)):
+        datas.append(torch.cat([obs[0].data[i] for obs in obses], 0))
+    valids = torch.stack([obs[0].valids for obs in obses])
+    return datas, valids
