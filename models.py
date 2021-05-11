@@ -147,7 +147,7 @@ class QModel:
         self.optimizer = torch.optim.Adam(self.model.parameters, lr=lr)
         self.gamma = gamma
         self.states = None
-        self.target = Target(buildModel(isize, esize, rnnSizes, rnn=rnn, training=True))
+        self.target = Target(buildModel(isize, esize, rnnSizes, rnn=rnn))
         self.updateTarget()
         self._fit = self.fit_maker()
 
