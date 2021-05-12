@@ -28,9 +28,12 @@ class TFObservation(BaseTFObservation):
 class TorchObservation(BaseTFObservation):
     def convert(self, obs):
         r = []
+        r.append(torch.tensor([obs.data[0]], dtype=torch.float32))
+        r.append(torch.tensor([obs.data[1]], dtype=torch.int64))
+        r.append(torch.tensor([obs.data[2]], dtype=torch.int64))
         for d in obs.data:
             if isinstance(d, np.ndarray):
-                r.append(torch.tensor([d], dtype=torch.float32))
+                pass
             else:
                 a = np.zeros((105,))
                 #print(a, d, self.type, self.valids)
