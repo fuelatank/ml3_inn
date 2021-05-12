@@ -37,11 +37,13 @@ class ChooseModel(nn.Module):
         if self.chosen:
             mainInput, eInput, cInput = x
             e = self.embed(eInput)#F.relu/tanh!
+            e = e.view(e.size()[0], -1)
             c = self.a(self.chosenLinear(cInput))
             x = torch.cat([mainInput, e, c], dim=1)
         elif self.executing:
             mainInput, eInput = x
             e = self.embed(eInput)
+            e = e.view(e.size()[0], -1)
             x = torch.cat([mainInput, e], dim=1)
         x = self.a(self.linear1(x))
         x = self.a(self.linear2(x))
