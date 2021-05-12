@@ -9,7 +9,7 @@ from collections import deque
 import tensorflow as tf
 import numpy as np
 
-from obs import TFObservation
+from obs import TorchObservation
 
 class QBuffer:
     def __init__(self, size=tc.BUFFER_SIZE, gamma=tc.GAMMA):
@@ -85,15 +85,15 @@ class QAgent(BaseAgent):
     def step(self, obs, epsilon=0.2):
         if random.random() < epsilon:
             action = random.choice(obs.valids)
-            tfobs = TFObservation(obs)
+            torchobs = TorchObservation(obs)
             r = action
-            action += tfobs.typeIndex
+            action += torchobs.typeIndex
         else:
-            tfobs = TFObservation(obs)
-            action = int(self.model.step(tfobs))
-            r = action - tfobs.typeIndex
+            torchobs = TorchObservation(obs)
+            action = int(self.model.step(torchobs))
+            r = action - torchobs.typeIndex
         if self.collecting:
-            self.buf.store(tfobs, action)
+            self.buf.store(torchobs, action)
         self.lastObs = obs
         self.lastAction = action
         return r

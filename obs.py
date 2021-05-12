@@ -25,6 +25,25 @@ class TFObservation(BaseTFObservation):
         self.valids = tf.constant(valids, dtype=tf.float32)
         self.typeIndex = INDICES[obs.type]
 
+class TorchObservation(BaseTFObservation):
+    def convert(self, obs):
+        r = []
+        for d in obs.data:
+            if isinstance(d, np.ndarray):
+                r.append(torch.tensor([d], dtype=torch.float32))
+            else:
+                a = np.zeros((105,))
+                #print(a, d, self.type, self.valids)
+                a[d] = 1
+                r.append(torch.tensor([a], dtype=torch.float32))
+        self.data = r
+        index = INDICES[obs.type]
+        valids = np.zeros((361,))
+        for i in obs.valids:
+            valids[i+index] = 1
+        self.valids = torch.tensor(valids, dtype=torch.float32)
+        self.typeIndex = INDICES[obs.type]
+
 def stackObs(obses):
     datas = []
     for i in range(len(obses[0][0].data)):
