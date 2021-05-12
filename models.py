@@ -192,12 +192,12 @@ class QModel:
         return r
     
     def _step(self, data, valids):
-        logits, self.states = self.model({'x': data, 'hs': self.states})
+        logits, self.states = self.model(x=data, hs=self.states)
         r = validFilter(logits, torch.unsqueeze(valids, 0))
         return torch.argmax(r)
 
     def predict(self, data, valids):
-        r, _ = self.model({'x': data})
+        r, _ = self.model(x=data)
         return r
 
     def updateTarget(self):
@@ -215,7 +215,7 @@ class Target:
         self.model.load_state_dict(model.state_dict())
 
     def predict(self, data, valids):
-        r, _ = self.model({'x': data})
+        r, _ = self.model(x=data)
         return r
 
 '''qmodel = QModel(300, 20, [128, 128], 1e-4, rnn='gru')
