@@ -128,7 +128,7 @@ class PolicyModel:
     
     def _step(self, data, valids):
         with torch.no_grad():
-            logits, self.states = self.model({'x': data, 'hs': self.states})
+            logits, self.states = self.model(x=data, hs=self.states)
             r = validFilter(logits, torch.unsqueeze(valids, 0))
             probs = r / torch.sum(r)
         return probs
