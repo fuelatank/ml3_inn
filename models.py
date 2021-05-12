@@ -145,7 +145,7 @@ class PolicyModel:
 class QModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm', gamma=0.99):
         self.model = buildModel(isize, esize, rnnSizes, rnn=rnn)
-        self.optimizer = torch.optim.Adam(self.model.parameters, lr=lr)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.gamma = gamma
         self.states = None
         self.target = Target(buildModel(isize, esize, rnnSizes, rnn=rnn))
