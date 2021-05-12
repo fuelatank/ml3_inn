@@ -56,6 +56,7 @@ class BasicModel(nn.Module):
         self.rnnSizes = rnnSizes
         self.rnnFunc = rnns[rnn]
         self.a = activations[activation]
+        self.strA = activation
         self.buildModel()
     
     def buildModel(self):
@@ -69,14 +70,14 @@ class BasicModel(nn.Module):
             l = nn.LSTM(rnnInputLength, size)
             self.rnnLayers.append(l)
             rnnInputLength = size
-        self.main = ChooseModel(rnnInputLength, 120, hidden=128, activation=self.a)
-        self.oc = ChooseModel(rnnInputLength, 106, executing=True, activation=self.a)
-        self.ot = ChooseModel(rnnInputLength, 11, executing=True, activation=self.a)
-        self.ac = ChooseModel(rnnInputLength, 106, executing=True, chosen=True, activation=self.a)
-        self.at = ChooseModel(rnnInputLength, 5, executing=True, chosen=True, activation=self.a)
-        self.yn = ChooseModel(rnnInputLength, 2, executing=True, activation=self.a)
-        self.age = ChooseModel(rnnInputLength, 10, activation=self.a)
-        self.r = ChooseModel(rnnInputLength, 1, hidden=1, activation=self.a)
+        self.main = ChooseModel(rnnInputLength, 120, hidden=128, activation=self.strA)
+        self.oc = ChooseModel(rnnInputLength, 106, executing=True, activation=self.strA)
+        self.ot = ChooseModel(rnnInputLength, 11, executing=True, activation=self.strA)
+        self.ac = ChooseModel(rnnInputLength, 106, executing=True, chosen=True, activation=self.strA)
+        self.at = ChooseModel(rnnInputLength, 5, executing=True, chosen=True, activation=self.strA)
+        self.yn = ChooseModel(rnnInputLength, 2, executing=True, activation=self.strA)
+        self.age = ChooseModel(rnnInputLength, 10, activation=self.strA)
+        self.r = ChooseModel(rnnInputLength, 1, hidden=1, activation=self.strA)
     
     def forward(self, x, hs=None):
         normal, embedRequired, executing, chosen, reveal = x
