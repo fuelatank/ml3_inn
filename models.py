@@ -90,7 +90,7 @@ class BasicModel(nn.Module):
         x = torch.cat([normal, e, x, r], dim=1)
         x = torch.unsqueeze(x, 1)
         nhs = []
-        if torch.is_grad_enabled():
+        if not hs:
             for l in self.rnnLayers:
                 x, nh = l(x)
                 nhs.append(nh)
