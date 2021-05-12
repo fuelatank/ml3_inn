@@ -162,7 +162,7 @@ class QModel:
             for _, episode in enumerate(data):
                 #print(len(episode), end=' ')
                 #t0 = time.time()
-                acts = torch.tensor([s[1] for s in episode], dtype=torch.int32)
+                acts = torch.tensor([s[1] for s in episode], dtype=torch.int64)
                 rew = torch.tensor([episode[-1][2]], dtype=torch.float32)
                 allObs, allValids = stackObs(episode)
                 self._fit(allObs, allValids, acts, rew, double=double)
