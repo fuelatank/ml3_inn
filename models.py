@@ -175,13 +175,13 @@ class QModel:
                 if double:
                     cqs = self.predict(allObs, allValids)[1:]
                     bestAct = torch.argmax(cqs, dim=1, keepdims=True)
-                    q_next = torch.squeeze(torch.gather(nqs, bestAct))
+                    q_next = torch.squeeze(torch.gather(nqs, 1, bestAct))
                 else:
                     q_next = torch.max(nqs, dim=1)
                 ys = self.gamma * torch.log(q_next)
                 ys = torch.cat([ys, rew], dim=0)
             qs, _ = self.model(allObs)
-            y_preds = torch.squeeze(torch.gather(qs, torch.unsqueeze(acts, 1)))
+            y_preds = torch.squeeze(torch.gather(qs, 1, torch.unsqueeze(acts, 1)))
             loss = torch.mean((ys - y_preds) ** 2)
             loss.backward()
             self.optimizer.step()
