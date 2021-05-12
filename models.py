@@ -87,7 +87,7 @@ class BasicModel(nn.Module):
         e = e.view(e.size()[0], -1)
         e = self.a(self.eLinear(e))
         r = self.a(self.rLinear(reveal))
-        x = torch.cat([normal, e, x, r])
+        x = torch.cat([normal, e, x, r], dim=1)
         x = torch.unsqueeze(x, 1)
         nhs = []
         if torch.is_grad_enabled():
