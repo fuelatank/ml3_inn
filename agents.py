@@ -108,6 +108,12 @@ class QAgent(BaseAgent):
         if self.count == self.n_update_target:
             self.count = 0
             self.model.updateTarget()
+    
+    def save(self, path):
+        self.model.save(path)
+    
+    def load(self, path):
+        self.model.load(path)
 
 class ModelAgent(BaseAgent):
     def __init__(self, model):
