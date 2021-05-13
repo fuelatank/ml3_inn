@@ -6,7 +6,7 @@ import bisect as bs
 import pandas as pd
 import numpy as np
 import logging as lg
-from collections import *
+from collections import Counter, deque
 from copy import copy as cp, deepcopy as dc
 
 MODE = 'w'
@@ -73,7 +73,7 @@ class Spec:
 
 mainspecs = list(map(lambda i, name, cond: Spec(name, i, cond=cond), range(5), spec_names, conds))
 l = list(zip(ages, colors, ics, funcs, dems, idxs))
-maincds = list(map(lambda c: Card(str(c[3][0])[10:-23], c[0], c[1], c[2], c[3], c[4], c[5]), l))
+maincds = list(map(lambda c: Card(c[3][0].__name__, c[0], c[1], c[2], c[3], c[4], c[5]), l))
 #print([[c, c.icons, c.splayIcons] for c in random.sample(maincds, 15)])
 mainacds = {}
 lst = 0
@@ -143,6 +143,8 @@ class Player:
     def __init__(self, name, cds=None, mcds=None):
         self.name = name
         self.cds = cds
+        self.mcds = []
+        self.cdslen = None
         self.cards = []
         self.cages = []
         self.scores = []
@@ -162,6 +164,7 @@ class Player:
         self.lgr = None
         self.tucked = 0
         self.scored = 0
+        self.log = None
     
     def __repr__(self):
         return self.name
@@ -202,6 +205,18 @@ class Player:
     def win(self, name):
         self.ailog('%s wins with %s!', self, name)
         raise WinError(self)
+
+    def drawStack(self, col):
+        raise NotImplementedError
+
+    def chsST(self, cs, ps=True, op=False):
+        raise NotImplementedError
+
+    def chsYn(self):
+        raise NotImplementedError
+
+    def _reveal(self, cs):
+        pass
 
     def maySplay(self, col, d, m=False):
         if m:
@@ -267,7 +282,7 @@ class Player:
                 self.specAchieve(c.i)
 
     def drawMax(self):
-        for cs in (self.cards, self.cages, self.scores, self.sages):
+        for _ in (self.cards, self.cages, self.scores, self.sages):
             #self.adlog(cs)
             pass
         ags = map(lambda c: c[-1].age if c else 0, self.board)
@@ -281,13 +296,13 @@ class Player:
         self.oilog('%s draws a %d', self, c.age)
     
     def draw(self, age, shr=True):
-        for cs in (self.cards, self.cages, self.scores, self.sages):
+        for _ in (self.cards, self.cages, self.scores, self.sages):
             #self.adlog(cs)
             pass
         if list(map(lambda c: c.age, self.cards)) != self.cages:
-            raise
+            raise Exception()
         if list(map(lambda c: c.age, self.scores)) != self.sages:
-            raise
+            raise Exception()
         c = self.cds.pop(age)
         pos = bs.bisect(self.cages, c.age)
         self.cages.insert(pos, c.age)
@@ -529,7 +544,7 @@ class Player:
         self.ps.dones.clear()
         self.ps.executedcount[c.name] += 1
         if len(list(self.ps.executedcount)) == 105 and self.ps.executedcount.most_common()[-1][1] >= 50:
-            raise Exception()
+            pass#raise Exception()
     
     def ageOf(self, cs):
         if cs is self.cards:
@@ -605,8 +620,8 @@ class Player:
     def exchange(self, m1, m2, cs1, cs2):
         cs1 = cp(cs1)
         cs2 = cp(cs2)
-        p1 = self.pOf(m1)
-        p2 = self.pOf(m2)
+        #p1 = self.pOf(m1)
+        #p2 = self.pOf(m2)
         ages1 = self.ageOf(m1)
         ages2 = self.ageOf(m2)
         for c in cs1:
@@ -629,8 +644,8 @@ class Player:
         self.ps.shared[-1] = True
 
     def exchange1(self, c1, c2, cs1, cs2):
-        p1 = self.pOf(cs1)
-        p2 = self.pOf(cs2)
+        #p1 = self.pOf(cs1)
+        #p2 = self.pOf(cs2)
         for c, cs, ocs in ((c1, cs1, cs2), (c2, cs2, cs1)):
             #print(c, cs, ocs, self.ageOf(cs), self.ageOf(ocs))
             cs.remove(c)
@@ -643,7 +658,8 @@ class Player:
         self.ps.shared[-1] = True
 
     def ilog(self, msg, *args):
-        pass#self.lgr.info(msg, *args)
+        if self.log:
+            self.lgr.info(msg, *args)
 
     def dlog(self, msg, *args):
         pass#self.lgr.debug(msg, *args)
@@ -655,7 +671,8 @@ class Player:
         pass#self.olgr.debug(msg, *args)
 
     def ailog(self, msg, *args):
-        pass#self.lgr.info(msg, *args)
+        if self.log:
+            self.lgr.info(msg, *args)
         #self.olgr.info(msg, *args)
 
     def adlog(self, msg, *args):
@@ -915,7 +932,7 @@ class Game:
             p.colIcons = {i: [0, 0, 0, 0, 0] for i in ICONS}
         #self.init()
 
-    def run(self, p1, p2, maxStep=500):
+    def run(self, p1, p2, maxStep=500, log=False):
         self.p1 = p1
         self.p2 = p2
         self.p1.op = self.p2
@@ -937,6 +954,8 @@ class Game:
         self.p2.olgr = self.p2olgr
         self.p1.fh = self.p1fh
         self.p2.fh = self.p2fh
+        self.p1.log = log
+        self.p2.log = log
         self.reset()
         self.init()
         for _ in range(maxStep):
@@ -990,4 +1009,4 @@ def getObs(ps):
         (np.array([act, ps.count/200, tscore/20, otscore/20, age/5, oage/5], dtype=np.float32),
             np.array(opcards + opscores + icons + oicons + splays, dtype=np.float32)/5.0,
             bls/5.0, cards, scores,
-            achs), axis=None), zb.reshape(-1), np.array([executing]), []]#), axis=None)
+            achs), axis=None), zb.reshape(-1), np.array([executing]), [], []]#), axis=None)

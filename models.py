@@ -6,41 +6,34 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from env import Observations
+from baseObs import Observation
+from obs import stackObs
+from weights import NPWeights
+import trainconfig as tc
 
-def lstm(i, e, c, r, sizes):
-    c = layers.Embedding(106, 4)(c)
-    c = layers.Flatten()(c)
-    e = layers.Embedding(106, 6)(e)
-    e = layers.Flatten()(e)
-    e = layers.Dense(64, activation='relu')(e)
-    x = layers.Concatenate()([i, e, c, r])
-    x = layers.Reshape((1, -1))(x)
-    print(x.shape)
-    for s in sizes:
-        x = layers.LSTM(s, stateful=True, return_sequences=True)(x)
+def rnn(layer):
+    def f(i, e, c, r, sizes, training=False):
+        c = layers.Embedding(106, 4)(c)
+        c = layers.Flatten()(c)
+        e = layers.Embedding(106, 6)(e)
+        e = layers.Flatten()(e)
+        e = layers.Dense(48, activation=tc.ACTIVATION)(e)
+        r = layers.Dense(16, activation=tc.ACTIVATION)(r)
+        x = layers.Concatenate()([i, e, c, r])
+        x = layers.Reshape((1, -1))(x)
         print(x.shape)
-    x = layers.Flatten()(x)
-    return x
-
-def gru(i, e, c, r, sizes):
-    c = layers.Embedding(106, 4)(c)
-    c = layers.Flatten()(c)
-    e = layers.Embedding(106, 6)(e)
-    e = layers.Flatten()(e)
-    e = layers.Dense(64, activation='relu')(e)
-    x = layers.Concatenate()([i, e, c, r])
-    x = layers.Reshape((1, -1))(x)
-    print(x.shape)
-    for s in sizes:
-        x = layers.GRU(s, stateful=True, return_sequences=True)(x)
-        print(x.shape)
-    x = layers.Flatten()(x)
-    return x
+        for s in sizes:
+            x = layer(s, stateful=(not training), return_sequences=True)(x)
+            print(x.shape)
+        x = layers.Flatten()(x)
+        return x
+    return f
+lstm = rnn(layers.LSTM)
+gru = rnn(layers.GRU)
 
 def simpleModel(x):
-    x = layers.Dense(128, activation='tanh')(x)
-    x = layers.Dense(128, activation='tanh')(x)
+    x = layers.Dense(128, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(128, activation=tc.ACTIVATION)(x)
     o = layers.Dense(120)(x)
     return o
 
@@ -48,8 +41,8 @@ def chooseOneCard(x, c):
     c = layers.Embedding(106, 4)(c)
     c = layers.Flatten()(c)
     x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(106)(x)
     return o
 
@@ -57,8 +50,8 @@ def chooseOneColor(x, c):
     c = layers.Embedding(106, 4)(c)
     c = layers.Flatten()(c)
     x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(11)(x) # opponent's board
     return o
 
@@ -66,32 +59,34 @@ def chooseYn(x, c):
     c = layers.Embedding(106, 4)(c)
     c = layers.Flatten()(c)
     x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(2)(x)
     return o
 
 def chooseAnyCard(x, e, c):
     e = layers.Embedding(106, 4)(e)
     e = layers.Flatten()(e)
+    c = layers.Dense(16, activation=tc.ACTIVATION)(c)
     x = layers.Concatenate()([x, e, c])
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(106)(x)
     return o
 
 def chooseAnyColor(x, e, c):
     e = layers.Embedding(106, 4)(e)
     e = layers.Flatten()(e)
+    c = layers.Dense(16, activation=tc.ACTIVATION)(c)
     x = layers.Concatenate()([x, e, c])
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(5)(x) # can't pass
     return o
 
 def chooseAge(x):
-    x = layers.Dense(32, activation='tanh')(x)
-    x = layers.Dense(32, activation='tanh')(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
     o = layers.Dense(10)(x)
     return o
 
@@ -101,14 +96,21 @@ def reveal(x):
 
 rnns = {'lstm': lstm, 'gru': gru}
 
-def buildModel(isize, esize, rnnSizes, rnn='lstm'):
-    input1 = keras.Input(batch_shape=(1, isize))
-    input2 = keras.Input(batch_shape=(1, esize))
-    executingInput = keras.Input(batch_shape=(1, 1))
-    chosenInput = keras.Input(batch_shape=(1, 105))
-    revealInput = keras.Input(batch_shape=(1, 105))
+def buildModel(isize, esize, rnnSizes, rnn='lstm', training=False):
+    if training:
+        input1 = keras.Input(shape=(isize,))
+        input2 = keras.Input(shape=(esize,))
+        executingInput = keras.Input(shape=(1,))
+        chosenInput = keras.Input(shape=(105,))
+        revealInput = keras.Input(shape=(105,))
+    else:
+        input1 = keras.Input(batch_shape=(1, isize))
+        input2 = keras.Input(batch_shape=(1, esize))
+        executingInput = keras.Input(batch_shape=(1, 1))
+        chosenInput = keras.Input(batch_shape=(1, 105))
+        revealInput = keras.Input(batch_shape=(1, 105))
     rnnfn = rnns[rnn] if rnn in rnns else None
-    feature = rnnfn(input1, input2, executingInput, revealInput, rnnSizes)
+    feature = rnnfn(input1, input2, executingInput, revealInput, rnnSizes, training=training)
     mainOutput = simpleModel(feature)
     oneCardOutput = chooseOneCard(feature, executingInput)
     oneColorOutput = chooseOneColor(feature, executingInput)
@@ -117,36 +119,34 @@ def buildModel(isize, esize, rnnSizes, rnn='lstm'):
     ynOutput = chooseYn(feature, executingInput)
     ageOutput = chooseAge(feature)
     revealOutput = reveal(feature)
+    outputs = [mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput, ageOutput, revealOutput]
+    indexes = {}
+    lastIndex = 0
+    for o, k in zip(outputs, ['main', 'oc', 'ot', 'ac', 'at', 'yn', 'age', 'r']):
+        indexes[k] = lastIndex
+        lastIndex += o.shape[1]
+    allOutput = layers.Concatenate()([mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput, ageOutput, revealOutput])
 
     rnnModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=feature)
     rnnLayers = rnnModel.layers[-1-len(rnnSizes):-1]
     assert len(rnnLayers) == len(rnnSizes)
     rnnModel.summary()
 
-    mainModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=mainOutput)
-    oneCardModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=oneCardOutput)
-    oneColorModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=oneColorOutput)
-    anyCardModel = keras.Model(inputs=[input1, input2, executingInput, revealInput, chosenInput], outputs=anyCardOutput)
-    anyColorModel = keras.Model(inputs=[input1, input2, executingInput, revealInput, chosenInput], outputs=anyColorOutput)
-    ynModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=ynOutput)
-    ageModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=ageOutput)
-    revealModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=revealOutput)
-
-    #models = [mainModel, ynModel, oneCardModel, oneColorModel, anyCardModel, anyColorModel]
-    modelsDict = {'main': mainModel,'yn': ynModel,
-        'oc': oneCardModel, 'ot': oneColorModel,
-        'ac': anyCardModel, 'at': anyColorModel,
-        'age': ageModel, 'r': revealModel}
     model = keras.Model(inputs=[input1, input2, executingInput, chosenInput, revealInput],
-            outputs=[mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput, ageOutput, revealOutput])
-    model.summary()
-    return model, modelsDict, rnnLayers
+            outputs=allOutput)
+    #model.summary()
+    return model, rnnLayers, indexes
 
 def modelTFFunction(model):
-    @tf.function
+    #ispec = tf.TensorSpec(shape=model.input_shape[0], dtype=tf.float32)
+    #espec = tf.TensorSpec(shape=model.input_shape[1], dtype=tf.int32)
+    #specs = [ispec, espec] + \
+    specs = [tf.TensorSpec(shape=s, dtype=tf.float32) for s in model.input_shape]
+    @tf.function(input_signature=(specs, tf.TensorSpec(shape=[None, 361], dtype=tf.float32)))
     def pred(data, denseValids):
         #print(model.name)
-        r = model(data)[0]
+        r = model(data)#[0]
+        #tf.print(tf.shape(r))
         return tf.exp(r) * denseValids
     return pred
 
@@ -156,123 +156,119 @@ def modelTFFunctionAction(model):
         return model(data)[0][act]
     return pred
 
+class PolicyModel:
+    def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm'):
+        self.model, self.rnnLayers, self.indexes = buildModel(isize, esize, rnnSizes, rnn=rnn)
+        self.stepfunc = modelTFFunction(self.model)
+    
+    def step(self, obs):
+        probs = self._step(obs.data, obs.valids).numpy()
+        action = np.random.choice(361, p=probs)
+        return action
+    
+    @tf.function
+    def _step(self, data, valids):
+        r = self.stepfunc(data, tf.expand_dims(valids, axis=0))[0]
+        probs = r / tf.reduce_sum(r)
+        return probs
+    
+    def get_weights(self):
+        return NPWeights.from_keras_model(self.model)
+    
+    def set_weights(self, w):
+        self.model.set_weights(w.weights)
+
 class QModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm', gamma=0.99):
-        '''input1 = keras.Input(batch_shape=(1, isize))
-        input2 = keras.Input(batch_shape=(1, esize))
-        executingInput = keras.Input(batch_shape=(1, 1))
-        chosenInput = keras.Input(batch_shape=(1, 105))
-
-        self.rnn = rnn
-        rnnfn = rnns[rnn] if rnn in rnns else None
-        self.feature = rnnfn(input1, input2, executingInput, rnnSizes)
-        mainOutput = simpleModel(self.feature)
-        oneCardOutput = chooseOneCard(self.feature, executingInput)
-        oneColorOutput = chooseOneColor(self.feature, executingInput)
-        anyCardOutput = chooseAnyCard(self.feature, executingInput, chosenInput)
-        anyColorOutput = chooseAnyColor(self.feature, executingInput, chosenInput)
-        ynOutput = chooseYn(self.feature, executingInput)
-
-        self.rnnModel = keras.Model(inputs=[input1, input2, executingInput], outputs=self.feature)
-        self.rnnLayers = self.rnnModel.layers[9:-1]
-        assert len(self.rnnLayers) == len(rnnSizes)
-        self.rnnModel.summary()
-
-        self.mainModel = keras.Model(inputs=[input1, input2, executingInput], outputs=mainOutput)
-        self.oneCardModel = keras.Model(inputs=[input1, input2, executingInput], outputs=oneCardOutput)
-        self.oneColorModel = keras.Model(inputs=[input1, input2, executingInput], outputs=oneColorOutput)
-        self.anyCardModel = keras.Model(inputs=[input1, input2, executingInput, chosenInput], outputs=anyCardOutput)
-        self.anyColorModel = keras.Model(inputs=[input1, input2, executingInput, chosenInput], outputs=anyColorOutput)
-        self.ynModel = keras.Model(inputs=[input1, input2, executingInput], outputs=ynOutput)
-
-        self.models = [self.mainModel, self.ynModel, self.oneCardModel, self.oneColorModel, self.anyCardModel, self.anyColorModel]
-        self.modelsDict = {'main': self.mainModel,'yn': self.ynModel,
-        'oc': self.oneCardModel, 'ot': self.oneColorModel,
-        'ac': self.anyCardModel, 'at': self.anyColorModel}
-        self.model = keras.Model(inputs=[input1, input2, executingInput, chosenInput],
-            outputs=[mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput])
-        self.model.summary()'''
-        self.model, self.modelsDict, self.rnnLayers = buildModel(isize, esize, rnnSizes, rnn=rnn)
-        self.functionDict = {}
-        for k in self.modelsDict:
-            model = self.modelsDict[k]
-            @tf.function
-            def pred(data, denseValids):
-                r = model(data)[0]
-                return tf.exp(r) * denseValids
-            self.functionDict[k] = pred
+        self.model, self.rnnLayers, self.indexes = buildModel(isize, esize, rnnSizes, rnn=rnn)
+        self.fitmodel, _, _ = buildModel(isize, esize, rnnSizes, rnn=rnn, training=True)
+        self.fitmodel.set_weights(self.model.get_weights())
+        self.func = modelTFFunction(self.fitmodel)
+        self.stepfunc = modelTFFunction(self.model)
         self.optimizer = keras.optimizers.Adam(learning_rate=lr)
         self.gamma = gamma
-        self.target = Target(buildModel(isize, esize, rnnSizes, rnn=rnn))
+        self.target = Target(buildModel(isize, esize, rnnSizes, rnn=rnn, training=True))
         self.updateTarget()
+        self._fit = self.fit_maker()
 
     def fit(self, data, target=None, loops=1, double=True):
         if not target:
             target = self.target
-        for loop in range(loops):
-            print('loop', loop)
-            for i, episode in enumerate(data):
-                print('episode', i+1)
-                t0 = time.time()
-                ys = []
-                xs = []
-                self.predict(episode[0][0])
-                target.predict(episode[0][0])
-                for obs, act, reward, nextObs, n_done in episode:
-                    if n_done:
-                        nqs = target.predict(nextObs)
-                        if double:
-                            cqs = self.predict(nextObs)
-                            bestAct = tf.argmax(cqs)
-                            q_next = nqs[bestAct]
-                        else:
-                            q_next = tf.maximum(nqs)
-                        ys.append(self.gamma * q_next)
-                    else:
-                        ys.append(reward)
-                    xs.append((obs, act))
-                self.reset_states()
-                target.reset_states()
-                print('predict:', time.time()-t0)
-                t0 = time.time()
-                with tf.GradientTape() as tape:
-                    y_preds = []
-                    for obs, act in xs:
-                        model = self.modelsDict[obs.type]
-                        y_pred = model(obs.data)[0][act]
-                        y_preds.append(y_pred)
-                    loss = tf.reduce_mean((tf.stack(ys) - tf.stack(y_preds)) ** 2)
-                grads = tape.gradient(loss, self.model.trainable_weights)
-                self.optimizer.apply_gradients(
-                    (grad, var) 
-                    for (grad, var) in zip(grads, self.model.trainable_variables) 
-                    if grad is not None)
-                self.reset_states()
-                print('train:', time.time()-t0)
+        for _ in range(loops):
+            #print('loop', loop)
+            for _, episode in enumerate(data):
+                #print(len(episode), end=' ')
+                #t0 = time.time()
+                acts = tf.constant([s[1] for s in episode], dtype=tf.int32)
+                rew = tf.constant([episode[-1][2]], dtype=tf.float32)
+                allObs, allValids = stackObs(episode)
+                self._fit(allObs, allValids, acts, rew, double=tf.constant(double, dtype=tf.bool))
+                self.fitmodel.set_weights(self.model.get_weights())
+    
+    def fit_maker(self):
+        @tf.function(input_signature=(
+            [tf.TensorSpec(shape=s, dtype=tf.float32) for s in self.fitmodel.input_shape],
+            tf.TensorSpec(shape=(None, 361), dtype=tf.float32),
+            tf.TensorSpec(shape=(None), dtype=tf.int32),
+            tf.TensorSpec(shape=(1), dtype=tf.float32),
+            tf.TensorSpec(shape=(), dtype=tf.bool)))
+        def f(allObs, allValids, acts, rew, double):
+            target = self.target
+            nqs = target.predict(allObs, allValids)[1:]
+            if double:
+                cqs = self.predict(allObs, allValids)[1:]
+                bestAct = tf.argmax(cqs, axis=-1)
+                rg = tf.range(len(bestAct), dtype=tf.int64)
+                indices = tf.stack([rg, bestAct], axis=-1)
+                q_next = tf.gather_nd(nqs, indices)
+            else:
+                q_next = tf.reduce_max(nqs, axis=-1)
+            ys = self.gamma * tf.math.log(q_next)
+            ys = tf.concat([ys, rew], axis=0)
+            with tf.GradientTape() as tape:
+                qs = self.fitmodel(allObs)
+                rg = tf.range(tf.shape(acts)[0])#, dtype=tf.int64)
+                indices = tf.stack([rg, acts], axis=-1)
+                y_preds = tf.gather_nd(qs, indices)
+                loss = tf.reduce_mean((tf.stack(ys) - tf.stack(y_preds)) ** 2)
+            grads = tape.gradient(loss, self.fitmodel.trainable_weights)
+            self.optimizer.apply_gradients(
+                (grad, var) 
+                for (grad, var) in zip(grads, self.model.trainable_variables) 
+                if grad is not None)
+        return f
 
+    def step_slow(self, obs):
+        r = self.stepfunc(obs.data, tf.expand_dims(obs.valids, axis=0))[0]
+        return tf.argmax(r)
+    
     def step(self, obs):
-        model = self.modelsDict[obs.type]
-        r = model(obs.data)[0]
-        return self.argmaxWithValidFilter(r, obs.valids)
+        return self._step(obs.data, obs.valids)
+    
+    @tf.function
+    def _step(self, data, valids):
+        r = self.stepfunc(data, tf.expand_dims(valids, axis=0))[0]
+        return tf.argmax(r)
 
     def predict_slow(self, obs):
-        model = self.modelsDict[obs.type]
+        model = self.model
         r = model(obs.data)[0]
         r = self.validFilter(r, obs.valids)
         return r
 
-    def predict(self, obs):
-        dense = np.zeros(self.modelsDict[obs.type].output_shape[1:])
-        dense[obs.valids] = 1
-        return self.functionDict[obs.type](obs.data, tf.constant(dense, dtype=tf.float32))
+    @tf.function
+    def predict(self, data, valids):
+        r = self.func(data, valids)
+        return r
 
     def updateTarget(self):
         self.target.set(self.model)
 
     def validFilter(self, output, valids, log=False):
         #output = output.numpy()
-        dense = np.zeros(output.shape)
-        dense[valids] = 1
+        #dense = np.zeros(output.shape)
+        #dense[valids] = 1
+        dense = valids
         if log:
             dense = np.log(dense)
             return output + dense
@@ -289,6 +285,7 @@ class QModel:
 class Target:
     def __init__(self, model):
         self.model, self.modelsDict, self.rnnLayers = model
+        self.func = modelTFFunction(self.model)
         #self.modelsDict = dict_
         #self.rnnLayers = rnnLayers
 
@@ -299,10 +296,9 @@ class Target:
         for layer in self.rnnLayers:
             layer.reset_states()
 
-    def predict(self, obs):
-        model = self.modelsDict[obs.type]
-        r = model(obs.data)[0]
-        r = self.validFilter(r, obs.valids)
+    @tf.function
+    def predict(self, data, valids):
+        r = self.func(data, valids)
         return r
 
     def validFilter(self, output, valids, log=False):
