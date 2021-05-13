@@ -277,3 +277,11 @@ log/qAgents/test/Game/0/p2.log
 log/users/a+b/main.log
 log/users/a+b/p1.log
 log/users/a+b/p2.log
+.vscode/launch.json
+__pycache__/baseObs.cpython-38.pyc
+__pycache__/eval.cpython-38.pyc
+__pycache__/main.cpython-38.pyc
+__pycache__/obs.cpython-38.pyc
+__pycache__/profile.cpython-38.pyc
+__pycache__/trainconfig.cpython-38.pyc
+__pycache__/weights.cpython-38.pyc
