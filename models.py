@@ -31,67 +31,14 @@ def rnn(layer):
 lstm = rnn(layers.LSTM)
 gru = rnn(layers.GRU)
 
-def simpleModel(x):
-    x = layers.Dense(128, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(128, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(120)(x)
-    return o
-
-def chooseOneCard(x, c):
-    c = layers.Embedding(106, 4)(c)
-    c = layers.Flatten()(c)
-    x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(106)(x)
-    return o
-
-def chooseOneColor(x, c):
-    c = layers.Embedding(106, 4)(c)
-    c = layers.Flatten()(c)
-    x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(11)(x) # opponent's board
-    return o
-
-def chooseYn(x, c):
-    c = layers.Embedding(106, 4)(c)
-    c = layers.Flatten()(c)
-    x = layers.Concatenate()([x, c])
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(2)(x)
-    return o
-
-def chooseAnyCard(x, e, c):
+def afterRnn(x, e, c):
     e = layers.Embedding(106, 4)(e)
     e = layers.Flatten()(e)
     c = layers.Dense(16, activation=tc.ACTIVATION)(c)
     x = layers.Concatenate()([x, e, c])
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(106)(x)
-    return o
-
-def chooseAnyColor(x, e, c):
-    e = layers.Embedding(106, 4)(e)
-    e = layers.Flatten()(e)
-    c = layers.Dense(16, activation=tc.ACTIVATION)(c)
-    x = layers.Concatenate()([x, e, c])
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(5)(x) # can't pass
-    return o
-
-def chooseAge(x):
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    x = layers.Dense(32, activation=tc.ACTIVATION)(x)
-    o = layers.Dense(10)(x)
-    return o
-
-def reveal(x):
-    o = layers.Dense(1)(x)
+    x = layers.Dense(160, activation=tc.ACTIVATION)(x)
+    x = layers.Dense(160, activation=tc.ACTIVATION)(x)
+    o = layers.Dense(361)(x)
     return o
 
 rnns = {'lstm': lstm, 'gru': gru}
@@ -111,31 +58,16 @@ def buildModel(isize, esize, rnnSizes, rnn='lstm', training=False):
         revealInput = keras.Input(batch_shape=(1, 105))
     rnnfn = rnns[rnn] if rnn in rnns else None
     feature = rnnfn(input1, input2, executingInput, revealInput, rnnSizes, training=training)
-    mainOutput = simpleModel(feature)
-    oneCardOutput = chooseOneCard(feature, executingInput)
-    oneColorOutput = chooseOneColor(feature, executingInput)
-    anyCardOutput = chooseAnyCard(feature, executingInput, chosenInput)
-    anyColorOutput = chooseAnyColor(feature, executingInput, chosenInput)
-    ynOutput = chooseYn(feature, executingInput)
-    ageOutput = chooseAge(feature)
-    revealOutput = reveal(feature)
-    outputs = [mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput, ageOutput, revealOutput]
-    indexes = {}
-    lastIndex = 0
-    for o, k in zip(outputs, ['main', 'oc', 'ot', 'ac', 'at', 'yn', 'age', 'r']):
-        indexes[k] = lastIndex
-        lastIndex += o.shape[1]
-    allOutput = layers.Concatenate()([mainOutput, oneCardOutput, oneColorOutput, anyCardOutput, anyColorOutput, ynOutput, ageOutput, revealOutput])
-
+    output = afterRnn(feature, executingInput, chosenInput)
     rnnModel = keras.Model(inputs=[input1, input2, executingInput, revealInput], outputs=feature)
     rnnLayers = rnnModel.layers[-1-len(rnnSizes):-1]
     assert len(rnnLayers) == len(rnnSizes)
     rnnModel.summary()
 
     model = keras.Model(inputs=[input1, input2, executingInput, chosenInput, revealInput],
-            outputs=allOutput)
+            outputs=output)
     #model.summary()
-    return model, rnnLayers, indexes
+    return model, rnnLayers
 
 def modelTFFunction(model):
     #ispec = tf.TensorSpec(shape=model.input_shape[0], dtype=tf.float32)
@@ -158,7 +90,7 @@ def modelTFFunctionAction(model):
 
 class PolicyModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm'):
-        self.model, self.rnnLayers, self.indexes = buildModel(isize, esize, rnnSizes, rnn=rnn)
+        self.model, self.rnnLayers = buildModel(isize, esize, rnnSizes, rnn=rnn)
         self.stepfunc = modelTFFunction(self.model)
     
     def step(self, obs):
@@ -180,8 +112,8 @@ class PolicyModel:
 
 class QModel:
     def __init__(self, isize, esize, rnnSizes, lr, rnn='lstm', gamma=0.99):
-        self.model, self.rnnLayers, self.indexes = buildModel(isize, esize, rnnSizes, rnn=rnn)
-        self.fitmodel, _, _ = buildModel(isize, esize, rnnSizes, rnn=rnn, training=True)
+        self.model, self.rnnLayers = buildModel(isize, esize, rnnSizes, rnn=rnn)
+        self.fitmodel, _ = buildModel(isize, esize, rnnSizes, rnn=rnn, training=True)
         self.fitmodel.set_weights(self.model.get_weights())
         self.func = modelTFFunction(self.fitmodel)
         self.stepfunc = modelTFFunction(self.model)
@@ -284,7 +216,7 @@ class QModel:
 
 class Target:
     def __init__(self, model):
-        self.model, self.modelsDict, self.rnnLayers = model
+        self.model, self.rnnLayers = model
         self.func = modelTFFunction(self.model)
         #self.modelsDict = dict_
         #self.rnnLayers = rnnLayers
