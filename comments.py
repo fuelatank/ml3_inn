@@ -1,6 +1,7 @@
 
 MELD = "meld"
 TUCK = "tuck"
+SCORE = "score"
 RETURN = "return"
 TRANSFER = "transfer"
 REVEAL = "reveal"
@@ -9,7 +10,7 @@ ACTIONS_IN_TWO_PLACES = [TRANSFER]
 
 HAND = "hand"
 BOARD = "board"
-SCORE = "score pile"
+SCOREPILE = "score pile"
 
 BLUE = "blue"
 RED = "red"
