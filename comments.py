@@ -4,6 +4,7 @@ TUCK = "tuck"
 SCORE = "score"
 RETURN = "return"
 TRANSFER = "transfer"
+EXCHANGE = "exchange"
 REVEAL = "reveal"
 
 ACTIONS_IN_TWO_PLACES = [TRANSFER]
@@ -20,6 +21,8 @@ PURPLE = "purple"
 
 ALL = "all"
 ANY = "any number of"
+HIGHEST = "the highest"
+LOWEST = "the lowest"
 
 LEFT = "left"
 RIGHT = "right"
@@ -42,9 +45,12 @@ def comment(action=None, may=True, num=1, age=None, \
         l.append("card" if num == 1 else "cards")
     if icon is not None:
         l.append("with a " + icon)
-    l.append("from your " + from_)
-    if to is not None and action in ACTIONS_IN_TWO_PLACES:
-        l.append("to " + to)
+    if custom:
+        l.append(custom)
+    else:
+        l.append("from your " + from_)
+        if to is not None and action in ACTIONS_IN_TWO_PLACES:
+            l.append("to " + to)
     return ' '.join(l)
 
 def splayComment(colors, direction):
@@ -59,6 +65,12 @@ def splayComment(colors, direction):
         l.append("cards")
     l.append(direction)
     return ' '.join(l)
+
+def his(place):
+    return "his " + place
+
+def non(color):
+    return "non-" + color
 
 if __name__ == "__main__":
     pass
