@@ -1,6 +1,9 @@
 
 import itertools as _it
 from copy import deepcopy as dc
+from typing import Text
+
+from comments import *
 
 cr = 'crown'
 lf = 'leaf'
@@ -13,7 +16,7 @@ t = True
 f = False
 
 def agriculture(p):
-    c = p.chsC()
+    c = p.chsC(text=comment(RETURN))
     if c:
         p.rtrn(c)
         p.drawAndScore(c.age+1)
@@ -42,27 +45,28 @@ def alchemy(p):
             red = True
     if red:
         for i in range(len(p.cards)):
-            c = p.chsC(ps=False)
+            c = p.chsC(ps=False, text=comment(RETURN, may=False, num=ALL))
             p.rtrn(c)
 
 def alchemy2(p):
-    c = p.chsC(ps=False)
+    c = p.chsC(ps=False, text=comment(MELD, may=False))
     if c:
         p.meld(c)
-        c = p.chsC(ps=False)
+        c = p.chsC(ps=False, text=comment(SCORE, may=False))
         if c:
             p.score(c)
 
 def anatomy(p):
-    c = p.op.chsS(ps=False)
+    c = p.op.chsS(ps=False, text=comment(RETURN, may=False, from_=SCOREPILE))
     if c:
         p.op.scoreRtrn(c)
-        col = p.op.chsST(filter(lambda cd: cd and cd[-1].age == c.age, p.op.board), ps=False)
+        col = p.op.chsST(filter(lambda cd: cd and cd[-1].age == c.age, p.op.board), \
+            ps=False, text=comment(RETURN, may=False, age=c.age, from_=BOARD))
         if col:
             p.op.boardRtrn(col)
 
 def antibiotics(p):
-    cs = p.chsAC(mx=3)
+    cs = p.chsAC(mx=3, text=comment(RETURN, num=3))
     for c in cs:
         p.rtrn(c)
     for i in range(len(cs)):
@@ -71,7 +75,8 @@ def antibiotics(p):
 
 def archery(p):
     p.op.draw(1)
-    c = p.op.chsSC(filter(lambda c: c.age == p.op.cages[-1], p.op.cards), ps=False)
+    c = p.op.chsSC(filter(lambda c: c.age == p.op.cages[-1], p.op.cards), \
+        ps=False, text=comment(TRANSFER, may=False, num=HIGHEST, to=his(HAND)))
     p.nbTransfer(p.op.cards, p.cards, c)
 
 def astronomy(p):
@@ -91,7 +96,8 @@ def atomicTheory2(p):
     p.drawAndMeld(7)
 
 def banking(p):
-    col = p.op.chsST(filter(lambda c: c and fc in c[-1].icons and c[-1].color != 2, p.op.board), ps=False)
+    col = p.op.chsST(filter(lambda c: c and fc in c[-1].icons and c[-1].color != 2, p.op.board), \
+        ps=False, text=comment(TRANSFER, may=False, color=non(GREEN), icon=fc, from_=BOARD, to=his(BOARD)))
     if col is not None:
         p.btbTransfer(col)
         p.op.drawAndScore(5)
@@ -100,7 +106,7 @@ def banking2(p):
     p.maySplay(2, 2)
 
 def bicycle(p):
-    if p.chsYn():
+    if p.chsYn(text=comment(EXCHANGE, num=ALL, custom="in your hand and score pile")):
         p.exchange(p.scores, p.cards, p.scores, p.cards)
 
 def bioengineering(p):
