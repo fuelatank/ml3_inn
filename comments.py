@@ -18,6 +18,7 @@ RED = "red"
 GREEN = "green"
 YELLOW = "yellow"
 PURPLE = "purple"
+COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE]
 
 ALL = "all"
 ANY = "any number of"
@@ -28,10 +29,13 @@ LEFT = "left"
 RIGHT = "right"
 UP = "up"
 
-def comment(action=None, may=True, num=1, age=None, \
+# up to
+def comment(action=None, drawAnd=False, may=True, num=1, age=None, \
     top=True, color=None, icon=None, custom="", from_=HAND, to=None):
     l = ["You"]
     l.append('may' if may else 'must')
+    if drawAnd:
+        l.append("draw and")
     l.append(action)
     
     l.append('a' if num == 1 else str(num))
@@ -47,10 +51,10 @@ def comment(action=None, may=True, num=1, age=None, \
         l.append("with a " + icon)
     if custom:
         l.append(custom)
-    else:
+    if from_ is not None and not drawAnd:
         l.append("from your " + from_)
-        if to is not None and action in ACTIONS_IN_TWO_PLACES:
-            l.append("to " + to)
+    if to is not None and action in ACTIONS_IN_TWO_PLACES:
+        l.append("to " + to)
     return ' '.join(l)
 
 def splayComment(colors, direction):
