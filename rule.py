@@ -839,6 +839,10 @@ class Player:
 
     def logHand(self):
         self.ailog("%s's cards: %s" % (self, self.cards))
+    
+    def setAgent(self, agent):
+        self.agent = agent
+        self.agent.getInfo = self.getInformation
 
 class Game:
     def __init__(self, cds=maincds, specs=mainspecs, acds=mainacds, path=''):
@@ -938,6 +942,7 @@ class Game:
         self.turn = 1
         self.action = 1
         self.count = 0
+        self.history = []
         self.cds = Cds(self.p1.mcds, self.mspecs)
         self.p1.cds = self.cds
         self.p2.cds = self.cds
@@ -971,7 +976,6 @@ class Game:
         self.p2.cdslen = len(self.p2.mcds)
         self.p1.acds = self.acds
         self.p2.acds = self.acds
-        self.history = []
         self.p1.lgr = self.p1lgr
         self.p2.lgr = self.p2lgr
         self.p1.olgr = self.p1olgr
