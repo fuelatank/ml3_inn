@@ -106,11 +106,12 @@ def banking2(p):
     p.maySplay(2, 2)
 
 def bicycle(p):
-    if p.chsYn(text=comment(EXCHANGE, num=ALL, custom="in your hand and score pile")):
+    if p.chsYn(text=comment(EXCHANGE, num=ALL, custom="in your hand and score pile", from_=None)):
         p.exchange(p.scores, p.cards, p.scores, p.cards)
 
 def bioengineering(p):
-    col = p.chsST(filter(lambda c: c and lf in c[-1].icons, p.op.board), ps=False, op=True)
+    col = p.chsST(filter(lambda c: c and lf in c[-1].icons, p.op.board), \
+        ps=False, op=True, text=comment(TRANSFER, may=False, icon=lf, custom="from his board to your score pile"))
     if col is not None:
         p.btnbTransfer(p.scores, col)
 
@@ -134,7 +135,7 @@ def canelBuilding(p):
     p.exchange(p.scores, p.cards, ss, cs)
 
 def canning(p):
-    if p.chsYn():
+    if p.chsYn(text=comment(TUCK, age=6, drawAnd=True)):
         p.drawAndTuck(6)
         cols = filter(lambda i: p.board[i] and fc not in p.board[i][-1].icons, range(5))
         for col in cols:
@@ -148,12 +149,13 @@ def chemistry(p):
 
 def chemistry2(p):
     p.drawAndScore(max(map(lambda c: c[-1].age if c else 0, p.board)) + 1)
-    c = p.chsS(ps=False)
+    c = p.chsS(ps=False, text=comment(RETURN, may=False, from_=SCOREPILE))
     p.scoreRtrn(c)
 
 def cityStates(p):
     if p.op.icons[ct] >= 4:
-        col = p.op.chsST(filter(lambda c: c and ct in c[-1].icons, p.op.board), ps=False)
+        col = p.op.chsST(filter(lambda c: c and ct in c[-1].icons, p.op.board), \
+            ps=False, text=comment(TRANSFER, may=False, icon=ct, from_=BOARD, to=his(BOARD)))
         if col:
             p.btbTransfer(col)
             p.op.draw(1)
@@ -168,12 +170,13 @@ def classfication(p):
         p.op.revealAll(p.op.cards)
         cs = list(filter(lambda cd: c.color == cd.color, p.cards))
         for i in range(len(cs)):
-            c = p.chsSC(cs, ps=False)
+            c = p.chsSC(cs, ps=False, text=comment(MELD, may=False, color=COLORS[cd.color]))
             p.meld(c)
             cs.remove(c)
 
 def clothing(p):
-    c = p.chsSC(filter(lambda c: not p.board[c.color], p.cards))
+    c = p.chsSC(filter(lambda c: not p.board[c.color], p.cards), \
+        ps=False, text=comment(MELD, may=False, custom="of different color from any card on your board"))
     if c:
         p.meld(c)
 
@@ -188,14 +191,15 @@ def coal2(p):
     p.maySplay(1, 2)
 
 def coal3(p):
-    col = p.chsST(filter(lambda c: c, p.board))
+    col = p.chsST(filter(lambda c: c, p.board), text=comment(SCORE, from_=BOARD))
     if col is not None:
         p.boardScore(col)
         if p.board[col]:
             p.boardScore(col)
 
 def codeOfLaws(p):
-    c = p.chsSC(filter(lambda c: p.board[c.color], p.cards))
+    c = p.chsSC(filter(lambda c: p.board[c.color], p.cards), \
+        text=comment(TUCK, custom="of the same color as any card on your board"))
     if c:
         p.tuck(c)
         if not p.isSplay(c.color, 1):
@@ -203,7 +207,7 @@ def codeOfLaws(p):
 
 def collaboration(p):
     cs = [p.op.drawAndReveal(9), p.op.drawAndReveal(9)]
-    c = p.chsSC(cs, ps=False)
+    c = p.chsSC(cs, ps=False, text=comment(TRANSFER, may=False, custom="which he revealed from his hand", to="your board"))
     p.nbtbTransfer(p.op.cards, c)
     cs.remove(c)
     p.op.meld(cs[0])
@@ -218,15 +222,18 @@ def colonialism(p):
         c = p.drawAndTuck(3, rtrn=True)
 
 def combustion(p):
-    cs = p.op.chsAS(mx=2, ps=False)
+    cs = p.op.chsAS(mx=2, ps=False, \
+        text=comment(TRANSFER, may=False, num=2, from_=SCOREPILE, to=his(SCOREPILE)))
     for c in cs:
         p.nbTransfer(p.op.scores, p.scores, c)
 
 def compass(p):
-    col = p.op.chsST(filter(lambda c: c and lf in c[-1].icons, p.op.board), ps=False)
+    col = p.op.chsST(filter(lambda c: c and lf in c[-1].icons, p.op.board), ps=False, \
+        text=comment(TRANSFER, may=False, icon=lf, from_=BOARD, to=his(BOARD)))
     if col:
         p.btbTransfer(col)
-    col = p.op.chsST(filter(lambda c: c and lf not in c[-1].icons, p.board), ps=False, op=True)
+    col = p.op.chsST(filter(lambda c: c and lf not in c[-1].icons, p.board), ps=False, op=True, \
+        text=comment(TRANSFER, may=False, custom="without a leaf", from_=None, to="your board"))
     if col:
         p.op.btbTransfer(col)
 
