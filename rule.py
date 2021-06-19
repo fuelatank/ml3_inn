@@ -170,14 +170,6 @@ class Player:
         self.type = None
         self.args = None
         self.kwargs = None
-        self.getMove = self.getChsX("main")
-        self.chsSCHelper = self.getChsX("oc")
-        self.chsSTHelper = self.getChsX("ot")
-        self.chsYn = self.getChsX("yn")
-        self.chsAHelper = self.getChsX("age")
-        self.chsASCHelper = self.getChsX("ac")
-        self.chsATHelper = self.getChsX("at")
-        self._reveal = self.getChsX("r")
     
     def __repr__(self):
         return self.name
@@ -220,7 +212,7 @@ class Player:
         raise WinError(self)
 
     def drawStack(self, col):
-        raise NotImplementedError
+        pass
     
     def chsX(self, type_, *args, **kwargs):
         self.type = type_
@@ -264,7 +256,7 @@ class Player:
                     l.append(self.cdslen)
             elif self.type == "ac" or self.type == "at":
                 # set chosen when observation is made by getObs
-                if requireDict[OBS]["obsType"] == "getObs":
+                if OBS in requireDict and requireDict[OBS]["obsType"] == "getObs":
                     resultDict[OBS][3] = self.args[0]
                 else:
                     # need to fix this in other case
@@ -284,11 +276,14 @@ class Player:
                 l = [0]
             else:
                 raise ValueError(f"invalid observation type: {self.type}")
+            resultDict[VLD] = l
+        return resultDict
     
     def getMove(self):
-        return chsX("main")
+        return self.chsX("main")
     
     def chsSC(self, cs, ps=True):
+        cs = list(cs)
         if cs:
             r = self.chsX("oc", cs, ps=ps)
             return self.mcds[r] if r < self.cdslen else None
@@ -302,7 +297,7 @@ class Player:
         return self.chsSC(self.scores, ps=ps)
 
     def chsASC(self, cs, mx=None, ps=True):
-        obs = self.getObs()
+        #obs = self.getObs()
 
         # get indices of cards as valids
         l = list(map(self.mcds.index, cs))
@@ -313,9 +308,8 @@ class Player:
             l.append(self.cdslen) # add pass action
         for i in range(mx):
             if l:
-                obs[3] = chs # set chosen to observation
+                #obs[3] = chs # set chosen to observation
                 r = self.chsX("ac", chs, l)
-                r = self.agent.step(Observation(obs, l, 'ac'))
             else:
                 return [self.mcds[i] for i in chs]
             if r == self.cdslen: # passed
@@ -348,15 +342,14 @@ class Player:
         return self.chsST(self.board, ps=ps)
 
     def chsAT(self, mx=None):
-        obs = self.getObs()
+        #obs = self.getObs()
         if not mx:
             mx = 5
         cs = []
         chs = [0, 1, 2, 3, 4]
         for _ in range(mx):
-            obs[3] = cs
+            #obs[3] = cs
             c = self.chsX("at", cs, chs)
-            c = self.agent.step(Observation(obs, chs, 'at'))
             if not c:
                 return cs
             cs.append(c)
@@ -371,7 +364,7 @@ class Player:
         return self.chsX("yn")
     
     def _reveal(self, cs):
-        chsX(cs)
+        self.chsX("r", cs)
 
     def maySplay(self, col, d, m=False):
         if m:
