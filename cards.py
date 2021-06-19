@@ -25,8 +25,8 @@ def ai2(p):
     tops = list(map(lambda c: c[-1].name, filter(lambda c: c, p.board))) + list(map(lambda c: c[-1].name, filter(lambda c: c, p.op.board)))
     print(tops)
     if 'Robotics' in tops and 'Software' in tops:
-        ts = sum(p.sages)
-        ots = sum(p.op.sages)
+        ts = p.scores.sum()
+        ots = p.op.scores.sum()
         if ts > ots:
             p.op.win('ai')
         elif ts < ots:
@@ -71,7 +71,7 @@ def antibiotics(p):
 
 def archery(p):
     p.op.draw(1)
-    c = p.op.chsSC(filter(lambda c: c.age == p.op.cages[-1], p.op.cards), ps=False)
+    c = p.op.chsSC(filter(lambda c: c.age == p.op.cards.high(), p.op.cards), ps=False)
     p.nbTransfer(p.op.cards, p.cards, c)
 
 def astronomy(p):
@@ -123,8 +123,8 @@ def calendar(p):
         p.draw(3)
 
 def canelBuilding(p):
-    cs = list(filter(lambda c: c.age == p.cages[-1], p.cards))
-    ss = list(filter(lambda c: c.age == p.sages[-1], p.scores))
+    cs = list(filter(lambda c: c.age == p.cards.high(), p.cards))
+    ss = list(filter(lambda c: c.age == p.scores.high(), p.scores))
     p.exchange(p.scores, p.cards, ss, cs)
 
 def canning(p):
@@ -229,7 +229,7 @@ def composites(p):
     for cd in p.op.cards:
         if cd != c:
             p.nbTransfer(p.op.cards, p.cards, cd)
-    c = p.op.chsSC(filter(lambda c: c.age == p.op.sages[-1], p.op.scores), ps=False)
+    c = p.op.chsSC(filter(lambda c: c.age == p.op.scores.high(), p.op.scores), ps=False)
     if c:
         p.nbTransfer(p.op.scores, p.scores, c)
 
@@ -282,7 +282,7 @@ def democracy(p):
         p.ps.specs['Democracy'] = len(cs)
 
 def domestication(p):
-    c = p.chsSC(filter(lambda c: c.age == p.cages[0], p.cards), ps=False)
+    c = p.chsSC(filter(lambda c: c.age == p.cards.low(), p.cards), ps=False)
     if c:
         p.meld(c)
     p.draw(1)
@@ -298,11 +298,11 @@ def ecology(p):
         p.draw(10)
 
 def education(p):
-    c = p.chsSC(filter(lambda c: c.age == p.sages[-1], p.scores))
+    c = p.chsSC(filter(lambda c: c.age == p.scores.high(), p.scores))
     if c:
         p.scoreRtrn(c)
-        if p.sages:
-            p.draw(min(p.sages[-1] + 2, 11))
+        if p.scores:
+            p.draw(min(p.scores.high() + 2, 11))
 
 def electricity(p):
     cs = list(filter(lambda c: c and fc not in c[-1].icons, p.board))
@@ -335,7 +335,7 @@ def empiricism2(p):
 
 def encyclopedia(p):
     if p.scores and p.chsYn():
-        cs = list(filter(lambda c: c.age == p.sages[-1], p.scores))
+        cs = list(filter(lambda c: c.age == p.scores.high(), p.scores))
         for i in range(len(cs)):
             c = p.chsSC(cs, ps=False)
             p.meld(c, score=True)
@@ -365,7 +365,7 @@ def evolution(p):
             c = p.chsS(ps=False)
             p.scoreRtrn(c)
         elif p.scores:
-            p.draw(p.sages[-1])
+            p.draw(p.scores.high())
         else:
             p.draw(1)
 
@@ -374,8 +374,7 @@ def experimentation(p):
 
 def explosives(p):
     if p.op.cards:
-        #print(p.op.cages, p.op.cages[-3:])
-        for a in dc(p.op.cages[-3:]):
+        for a in p.op.cards.high(3):
             c = p.op.chsSC(filter(lambda c: c.age == a, p.op.cards), ps=False)
             #print(p.op.cards, c, a)
             p.nbTransfer(p.op.cards, p.cards, c)
@@ -398,10 +397,8 @@ def fission(p):
     c = p.op.drawAndReveal(10)
     if c.color == 1:
         for sp in [p, p.op]:
-            sp.cards = []
-            sp.scores = []
-            sp.cages = []
-            sp.sages = []
+            sp.cards.clear()
+            sp.scores.clear()
             for c in sp.board:
                 c.clear()
         p.ps.dones.add('Fission')
@@ -438,8 +435,8 @@ def globalization(p):
 def globalization2(p):
     p.drawAndScore(6)
     if p.icons[fc] >= p.icons[lf] and p.op.icons[fc] >= p.op.icons[fc]:
-        s = sum(p.sages)
-        os = sum(p.op.sages)
+        s = p.scores.sum()
+        os = p.op.scores.sum()
         if s > os:
             p.win('Globalization')
         elif os > s:
@@ -480,7 +477,7 @@ def lighting(p):
         p.drawAndScore(7)
 
 def machinery(p):
-    cs = filter(lambda c: c.age == p.cages[-1], p.cards)
+    cs = filter(lambda c: c.age == p.cards.high(), p.cards)
     p.exchange(p.cards, p.op.cards, cs, p.op.cards)
 
 def machinery2(p):
@@ -493,7 +490,7 @@ def machinery2(p):
 
 def machineTools(p):
     if p.scores:
-        p.drawAndScore(p.sages[-1])
+        p.drawAndScore(p.scores.high())
     else:
         p.drawAndScore(1)
 
@@ -519,7 +516,8 @@ def massMedia(p):
     if c:
         p.rtrn(c)
         a = p.chsA()
-        cs = list(filter(lambda c: c.age == a, p.op.scores + p.scores))
+        cs = list(filter(lambda c: c.age == a, p.op.scores))
+        cs += list(filter(lambda c: c.age == a, p.scores))
         for i in range(len(cs)):
             c = p.chsSC(cs, ps=False)
             if c in p.scores:
@@ -547,8 +545,8 @@ def measurement(p):
             p.draw(min(len(p.board[col]), 1))
 
 def medicine(p):
-    c = p.chsSC(filter(lambda c: c.age == p.sages[0], p.scores), ps=False) if p.scores else None
-    oc = p.op.chsSC(filter(lambda c: c.age == p.op.sages[-1], p.op.scores), ps=False) if p.op.scores else None
+    c = p.chsSC(filter(lambda c: c.age == p.scores.low(), p.scores), ps=False) if p.scores else None
+    oc = p.op.chsSC(filter(lambda c: c.age == p.op.scores.high(), p.op.scores), ps=False) if p.op.scores else None
     if c and oc:
         p.exchange1(c, oc, p.scores, p.op.scores)
     elif c:
@@ -574,7 +572,7 @@ def miniaturization(p):
     if c:
         p.rtrn(c)
         if c.age == 10:
-            for i in set(p.sages):
+            for i in p.scores.ageSet():
                 p.draw(10)
 
 def mobility(p):
@@ -624,7 +622,7 @@ def optics(p):
     c = p.drawAndMeld(3, rtrn=True)
     if cr in c.icons:
         p.drawAndScore(4)
-    elif sum(p.sages) > sum(p.op.sages):
+    elif p.scores.sum() > p.op.scores.sum():
         c = p.chsS(ps=False)
         p.op.nbTransfer(p.scores, p.op.scores, c)
 
@@ -763,11 +761,10 @@ def sailing(p):
 
 def sanitation(p):
     cs = []
-    #print(p.op.cards, p.op.cages)
-    for a in dc(p.op.cages[-2:]):
+    for a in dc(p.op.cards.high(2)):
         c = p.op.chsSC(filter(lambda c: c.age == a and c not in cs, p.op.cards), ps=False)
         cs.append(c)
-    c = p.op.chsSC(filter(lambda c: c.age == p.cages[0], p.cards), ps=False)
+    c = p.op.chsSC(filter(lambda c: c.age == p.cards.low(), p.cards), ps=False)
     if c:
         c = [c]
     else:
@@ -800,7 +797,7 @@ def selfService2(p):
         p.win('Selfservice')
 
 def services(p):
-    cs = list(filter(lambda c: c.age == p.op.sages[-1], p.op.scores))
+    cs = list(filter(lambda c: c.age == p.op.scores.high(), p.op.scores))
     for c in cs:
         p.nbTransfer(p.op.scores, p.cards, c)
     if cs:
@@ -827,7 +824,7 @@ def socialism(p):
             if c.color == 4:
                 pp = True
         if pp:
-            cs = list(filter(lambda c: c.age == p.cages[0], p.cards))
+            cs = list(filter(lambda c: c.age == p.cards.low(), p.cards))
             for c in cs:
                 p.nbTransfer(p.op.cards, p.cards, c)
 
@@ -856,11 +853,11 @@ def specialization2(p):
     p.maySplay((0, 3), 3, m=True)
 
 def statistics(p):
-    c = p.op.chsSC(filter(lambda c: c.age == p.op.sages[-1], p.op.scores), ps=False)
+    c = p.op.chsSC(filter(lambda c: c.age == p.op.scores.high(), p.op.scores), ps=False)
     if c:
         p.op.nbTransfer(p.op.scores, p.op.cards, c, s=True)
         if len(p.op.cards) == 1:
-            c = p.op.chsSC(filter(lambda c: c.age == p.op.sages[-1], p.op.scores), ps=False)
+            c = p.op.chsSC(filter(lambda c: c.age == p.op.scores.high(), p.op.scores), ps=False)
             if c:
                 p.op.nbTransfer(p.op.scores, p.op.cards, c, s=True)
 
@@ -942,7 +939,7 @@ def translation2(p):
 
 def vaccination(p):
     if p.op.scores:
-        cs = list(filter(lambda c: c.age == p.op.sages[0], p.op.scores))
+        cs = list(filter(lambda c: c.age == p.op.scores.low(), p.op.scores))
         for i in range(len(cs)):
             c = p.op.chsSC(cs, ps=False)
             p.op.scoreRtrn(c)
