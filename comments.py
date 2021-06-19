@@ -31,7 +31,7 @@ UP = "up"
 
 # up to
 def comment(action=None, drawAnd=False, may=True, num=1, age=None, \
-    top=True, color=None, icon=None, custom="", from_=HAND, to=None):
+    top=True, color=None, icon=None, noIcon=None, custom="", from_=HAND, to=None):
     l = ["You"]
     l.append('may' if may else 'must')
     if drawAnd:
@@ -49,6 +49,8 @@ def comment(action=None, drawAnd=False, may=True, num=1, age=None, \
         l.append("card" if num == 1 else "cards")
     if icon is not None:
         l.append("with a " + icon)
+    elif noIcon is not None:
+        l.append("without a " + noIcon)
     if custom:
         l.append(custom)
     if from_ is not None and not drawAnd:

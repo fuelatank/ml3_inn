@@ -242,7 +242,8 @@ def composites(p):
     for cd in p.op.cards:
         if cd != c:
             p.nbTransfer(p.op.cards, p.cards, cd)
-    c = p.op.chsSC(filter(lambda c: c.age == p.op.sages[-1], p.op.scores), ps=False)
+    c = p.op.chsSC(filter(lambda c: c.age == p.op.sages[-1], p.op.scores), ps=False, \
+        text=comment(TRANSFER, may=False, num=HIGHEST, from_=SCOREPILE, to=his(SCOREPILE)))
     if c:
         p.nbTransfer(p.op.scores, p.scores, c)
 
@@ -254,7 +255,7 @@ def computers2(p):
     p.xSharedDogma(c.color)
 
 def construction(p):
-    cs = p.op.chsAC(mx=2, ps=False)
+    cs = p.op.chsAC(mx=2, ps=False, text=comment(TRANSFER, may=False, num=2, to=his(HAND)))
     for c in cs:
         p.nbTransfer(p.op.cards, p.cards, c)
     p.op.draw(2)
@@ -264,7 +265,8 @@ def construction2(p):
         p.specAchieve(1)
 
 def corporations(p):
-    col = p.op.chsST(filter(lambda c: c and fc in c[-1].icons and c[-1].color != 2, p.op.board), ps=False)
+    col = p.op.chsST(filter(lambda c: c and fc in c[-1].icons and c[-1].color != 2, p.op.board), \
+        ps=False, text=comment(TRANSFER, may=False, color=non(GREEN), icon=fc, from_=BOARD, to=his(SCOREPILE)))
     if col is not None:
         p.btnbTransfer(p.scores, col)
         p.op.drawAndMeld(8)
@@ -273,7 +275,7 @@ def corporations2(p):
     p.drawAndMeld(8)
 
 def currency(p):
-    cs = p.chsAC()
+    cs = p.chsAC(text=comment(RETURN, num=ANY))
     s = set()
     for c in cs:
         p.rtrn(c)
@@ -283,11 +285,11 @@ def currency(p):
 
 def databases(p):
     for i in range((len(p.op.scores) + 1) // 2):
-        c = p.op.chsS(ps=False)
+        c = p.op.chsS(ps=False, text=comment(RETURN, may=False, from_=SCOREPILE))
         p.op.scoreRtrn(c)
 
 def democracy(p):
-    cs = p.chsAC()
+    cs = p.chsAC(text=comment(RETURN, num=ANY))
     for c in cs:
         p.rtrn(c)
     if cs and ('Democracy' not in p.ps.specs or len(cs) > p.ps.specs['Democracy']):
@@ -295,23 +297,25 @@ def democracy(p):
         p.ps.specs['Democracy'] = len(cs)
 
 def domestication(p):
-    c = p.chsSC(filter(lambda c: c.age == p.cages[0], p.cards), ps=False)
+    c = p.chsSC(filter(lambda c: c.age == p.cages[0], p.cards), ps=False, \
+        text=comment(MELD, may=False, age=LOWEST))
     if c:
         p.meld(c)
     p.draw(1)
 
 def ecology(p):
-    c = p.chsC()
+    c = p.chsC(text=comment(RETURN))
     if c:
         p.rtrn(c)
-        c = p.chsC(ps=False)
+        c = p.chsC(ps=False, text=comment(SCORE, may=False))
         if c:
             p.score(c)
         p.draw(10)
         p.draw(10)
 
 def education(p):
-    c = p.chsSC(filter(lambda c: c.age == p.sages[-1], p.scores))
+    c = p.chsSC(filter(lambda c: c.age == p.sages[-1], p.scores), \
+        text=comment(RETURN, age=HIGHEST, from_=SCOREPILE))
     if c:
         p.scoreRtrn(c)
         if p.sages:
@@ -320,13 +324,13 @@ def education(p):
 def electricity(p):
     cs = list(filter(lambda c: c and fc not in c[-1].icons, p.board))
     for i in range(len(cs)):
-        c = p.chsST(cs, ps=False)
+        c = p.chsST(cs, ps=False, text=comment(RETURN, may=False, noIcon=fc, from_=BOARD))
         cs.remove(p.board[c])
         p.boardRtrn(c)
         p.draw(8)
 
 def emancipation(p):
-    c = p.op.chsC(ps=False)
+    c = p.op.chsC(ps=False, text=comment(TRANSFER, may=False, to=his(SCOREPILE)))
     if c:
         p.nbTransfer(p.op.cards, p.scores, c)
         p.op.draw(6)
