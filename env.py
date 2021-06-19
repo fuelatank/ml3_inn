@@ -125,11 +125,3 @@ class Computer(Player):
         obs = self.getObs()
         obs[-1] = [self.mcds.index(c) for c in cs]
         self.agent.step(Observation(obs, [0], 'r'))
-
-'''class Innovation:
-    def __init__(self, p1, p2, path):
-        self.ps = Players(p1, p2, path=path)
-    def reset(self):
-        self.ps.reset()
-    def step(self, action):
-        pass'''
