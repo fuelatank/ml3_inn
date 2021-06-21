@@ -361,7 +361,7 @@ def encyclopedia(p):
 def engineering(p):
     cols = filter(lambda c: p.op.board[c] and ct in p.op.board[c][-1].icons, range(5))
     for c in cols:
-        p.op.boardRtrn(c)
+        p.btnbTransfer(p.scores, c)
 
 def engineering2(p):
     p.maySplay(1, 1)
