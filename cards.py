@@ -339,7 +339,7 @@ def emancipation2(p):
     p.maySplay((1, 4), 2, m=True)
 
 def empiricism(p):
-    cols = p.chsAT(mx=2)
+    cols = p.chsAT(mx=2, ps=False, text="You must choose 2 colors")
     c = p.drawAndReveal(9)
     if c.color in cols:
         p.meld(c)
@@ -351,10 +351,10 @@ def empiricism2(p):
         p.win('Empiricism')
 
 def encyclopedia(p):
-    if p.scores and p.chsYn():
+    if p.scores and p.chsYn(text=comment(MELD, num=HIGHEST, from_=SCOREPILE)):
         cs = list(filter(lambda c: c.age == p.sages[-1], p.scores))
         for i in range(len(cs)):
-            c = p.chsSC(cs, ps=False)
+            c = p.chsSC(cs, ps=False, text=comment(MELD, may=False, num=HIGHEST, from_=SCOREPILE))
             p.meld(c, score=True)
             cs.remove(c)
 
