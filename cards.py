@@ -170,9 +170,9 @@ def classfication(p):
         p.op.revealAll(p.op.cards)
         cs = list(filter(lambda cd: c.color == cd.color, p.cards))
         for i in range(len(cs)):
-            c = p.chsSC(cs, ps=False, text=comment(MELD, may=False, color=COLORS[cd.color]))
-            p.meld(c)
-            cs.remove(c)
+            cd = p.chsSC(cs, ps=False, text=comment(MELD, may=False, color=COLORS[c.color]))
+            p.meld(cd)
+            cs.remove(cd)
 
 def clothing(p):
     c = p.chsSC(filter(lambda c: not p.board[c.color], p.cards), \
@@ -339,7 +339,7 @@ def emancipation2(p):
     p.maySplay((1, 4), 2, m=True)
 
 def empiricism(p):
-    cols = p.chsAT(mx=2, ps=False, text="You must choose 2 colors")
+    cols = p.chsAT(mx=2, text="You must choose 2 colors")
     c = p.drawAndReveal(9)
     if c.color in cols:
         p.meld(c)

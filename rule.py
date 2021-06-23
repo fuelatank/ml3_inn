@@ -395,7 +395,7 @@ class Player:
         for _ in range(mx):
             #obs[3] = cs
             c = self.chsX("at", cs, chs, text=text)
-            if not c:
+            if c is None:
                 return cs
             cs.append(c)
             chs.remove(c)
