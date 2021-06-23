@@ -1,6 +1,9 @@
 
 import itertools as _it
 from copy import deepcopy as dc
+from typing import Text
+
+from comments import *
 
 cr = 'crown'
 lf = 'leaf'
@@ -13,7 +16,7 @@ t = True
 f = False
 
 def agriculture(p):
-    c = p.chsC()
+    c = p.chsC(text=comment(RETURN))
     if c:
         p.rtrn(c)
         p.drawAndScore(c.age+1)
@@ -42,27 +45,28 @@ def alchemy(p):
             red = True
     if red:
         for i in range(len(p.cards)):
-            c = p.chsC(ps=False)
+            c = p.chsC(ps=False, text=comment(RETURN, may=False, num=ALL))
             p.rtrn(c)
 
 def alchemy2(p):
-    c = p.chsC(ps=False)
+    c = p.chsC(ps=False, text=comment(MELD, may=False))
     if c:
         p.meld(c)
-        c = p.chsC(ps=False)
+        c = p.chsC(ps=False, text=comment(SCORE, may=False))
         if c:
             p.score(c)
 
 def anatomy(p):
-    c = p.op.chsS(ps=False)
+    c = p.op.chsS(ps=False, text=comment(RETURN, may=False, from_=SCOREPILE))
     if c:
         p.op.scoreRtrn(c)
-        col = p.op.chsST(filter(lambda cd: cd and cd[-1].age == c.age, p.op.board), ps=False)
+        col = p.op.chsST(filter(lambda cd: cd and cd[-1].age == c.age, p.op.board), \
+            ps=False, text=comment(RETURN, may=False, age=c.age, from_=BOARD))
         if col:
             p.op.boardRtrn(col)
 
 def antibiotics(p):
-    cs = p.chsAC(mx=3)
+    cs = p.chsAC(mx=3, text=comment(RETURN, num=3))
     for c in cs:
         p.rtrn(c)
     for i in range(len(cs)):
@@ -71,7 +75,8 @@ def antibiotics(p):
 
 def archery(p):
     p.op.draw(1)
-    c = p.op.chsSC(filter(lambda c: c.age == p.op.cages[-1], p.op.cards), ps=False)
+    c = p.op.chsSC(filter(lambda c: c.age == p.op.cages[-1], p.op.cards), \
+        ps=False, text=comment(TRANSFER, may=False, num=HIGHEST, to=his(HAND)))
     p.nbTransfer(p.op.cards, p.cards, c)
 
 def astronomy(p):
@@ -91,7 +96,8 @@ def atomicTheory2(p):
     p.drawAndMeld(7)
 
 def banking(p):
-    col = p.op.chsST(filter(lambda c: c and fc in c[-1].icons and c[-1].color != 2, p.op.board), ps=False)
+    col = p.op.chsST(filter(lambda c: c and fc in c[-1].icons and c[-1].color != 2, p.op.board), \
+        ps=False, text=comment(TRANSFER, may=False, color=non(GREEN), icon=fc, from_=BOARD, to=his(BOARD)))
     if col is not None:
         p.btbTransfer(col)
         p.op.drawAndScore(5)
@@ -100,11 +106,12 @@ def banking2(p):
     p.maySplay(2, 2)
 
 def bicycle(p):
-    if p.chsYn():
+    if p.chsYn(text=comment(EXCHANGE, num=ALL, custom="in your hand and score pile", from_=None)):
         p.exchange(p.scores, p.cards, p.scores, p.cards)
 
 def bioengineering(p):
-    col = p.chsST(filter(lambda c: c and lf in c[-1].icons, p.op.board), ps=False, op=True)
+    col = p.chsST(filter(lambda c: c and lf in c[-1].icons, p.op.board), \
+        ps=False, op=True, text=comment(TRANSFER, may=False, icon=lf, custom="from his board to your score pile"))
     if col is not None:
         p.btnbTransfer(p.scores, col)
 
@@ -128,7 +135,7 @@ def canelBuilding(p):
     p.exchange(p.scores, p.cards, ss, cs)
 
 def canning(p):
-    if p.chsYn():
+    if p.chsYn(text=comment(TUCK, age=6, drawAnd=True)):
         p.drawAndTuck(6)
         cols = filter(lambda i: p.board[i] and fc not in p.board[i][-1].icons, range(5))
         for col in cols:
@@ -142,12 +149,13 @@ def chemistry(p):
 
 def chemistry2(p):
     p.drawAndScore(max(map(lambda c: c[-1].age if c else 0, p.board)) + 1)
-    c = p.chsS(ps=False)
+    c = p.chsS(ps=False, text=comment(RETURN, may=False, from_=SCOREPILE))
     p.scoreRtrn(c)
 
 def cityStates(p):
     if p.op.icons[ct] >= 4:
-        col = p.op.chsST(filter(lambda c: c and ct in c[-1].icons, p.op.board), ps=False)
+        col = p.op.chsST(filter(lambda c: c and ct in c[-1].icons, p.op.board), \
+            ps=False, text=comment(TRANSFER, may=False, icon=ct, from_=BOARD, to=his(BOARD)))
         if col:
             p.btbTransfer(col)
             p.op.draw(1)
@@ -162,12 +170,13 @@ def classfication(p):
         p.op.revealAll(p.op.cards)
         cs = list(filter(lambda cd: c.color == cd.color, p.cards))
         for i in range(len(cs)):
-            c = p.chsSC(cs, ps=False)
+            c = p.chsSC(cs, ps=False, text=comment(MELD, may=False, color=COLORS[cd.color]))
             p.meld(c)
             cs.remove(c)
 
 def clothing(p):
-    c = p.chsSC(filter(lambda c: not p.board[c.color], p.cards))
+    c = p.chsSC(filter(lambda c: not p.board[c.color], p.cards), \
+        ps=False, text=comment(MELD, may=False, custom="of different color from any card on your board"))
     if c:
         p.meld(c)
 
@@ -182,14 +191,15 @@ def coal2(p):
     p.maySplay(1, 2)
 
 def coal3(p):
-    col = p.chsST(filter(lambda c: c, p.board))
+    col = p.chsST(filter(lambda c: c, p.board), text=comment(SCORE, from_=BOARD))
     if col is not None:
         p.boardScore(col)
         if p.board[col]:
             p.boardScore(col)
 
 def codeOfLaws(p):
-    c = p.chsSC(filter(lambda c: p.board[c.color], p.cards))
+    c = p.chsSC(filter(lambda c: p.board[c.color], p.cards), \
+        text=comment(TUCK, custom="of the same color as any card on your board"))
     if c:
         p.tuck(c)
         if not p.isSplay(c.color, 1):
@@ -197,7 +207,7 @@ def codeOfLaws(p):
 
 def collaboration(p):
     cs = [p.op.drawAndReveal(9), p.op.drawAndReveal(9)]
-    c = p.chsSC(cs, ps=False)
+    c = p.chsSC(cs, ps=False, text=comment(TRANSFER, may=False, custom="which he revealed from his hand", to="your board"))
     p.nbtbTransfer(p.op.cards, c)
     cs.remove(c)
     p.op.meld(cs[0])
@@ -212,15 +222,18 @@ def colonialism(p):
         c = p.drawAndTuck(3, rtrn=True)
 
 def combustion(p):
-    cs = p.op.chsAS(mx=2, ps=False)
+    cs = p.op.chsAS(mx=2, ps=False, \
+        text=comment(TRANSFER, may=False, num=2, from_=SCOREPILE, to=his(SCOREPILE)))
     for c in cs:
         p.nbTransfer(p.op.scores, p.scores, c)
 
 def compass(p):
-    col = p.op.chsST(filter(lambda c: c and lf in c[-1].icons, p.op.board), ps=False)
+    col = p.op.chsST(filter(lambda c: c and lf in c[-1].icons, p.op.board), ps=False, \
+        text=comment(TRANSFER, may=False, icon=lf, from_=BOARD, to=his(BOARD)))
     if col:
         p.btbTransfer(col)
-    col = p.op.chsST(filter(lambda c: c and lf not in c[-1].icons, p.board), ps=False, op=True)
+    col = p.op.chsST(filter(lambda c: c and lf not in c[-1].icons, p.board), ps=False, op=True, \
+        text=comment(TRANSFER, may=False, custom="without a leaf", from_=None, to="your board"))
     if col:
         p.op.btbTransfer(col)
 
@@ -229,7 +242,8 @@ def composites(p):
     for cd in p.op.cards:
         if cd != c:
             p.nbTransfer(p.op.cards, p.cards, cd)
-    c = p.op.chsSC(filter(lambda c: c.age == p.op.sages[-1], p.op.scores), ps=False)
+    c = p.op.chsSC(filter(lambda c: c.age == p.op.sages[-1], p.op.scores), ps=False, \
+        text=comment(TRANSFER, may=False, num=HIGHEST, from_=SCOREPILE, to=his(SCOREPILE)))
     if c:
         p.nbTransfer(p.op.scores, p.scores, c)
 
@@ -241,7 +255,7 @@ def computers2(p):
     p.xSharedDogma(c.color)
 
 def construction(p):
-    cs = p.op.chsAC(mx=2, ps=False)
+    cs = p.op.chsAC(mx=2, ps=False, text=comment(TRANSFER, may=False, num=2, to=his(HAND)))
     for c in cs:
         p.nbTransfer(p.op.cards, p.cards, c)
     p.op.draw(2)
@@ -251,7 +265,8 @@ def construction2(p):
         p.specAchieve(1)
 
 def corporations(p):
-    col = p.op.chsST(filter(lambda c: c and fc in c[-1].icons and c[-1].color != 2, p.op.board), ps=False)
+    col = p.op.chsST(filter(lambda c: c and fc in c[-1].icons and c[-1].color != 2, p.op.board), \
+        ps=False, text=comment(TRANSFER, may=False, color=non(GREEN), icon=fc, from_=BOARD, to=his(SCOREPILE)))
     if col is not None:
         p.btnbTransfer(p.scores, col)
         p.op.drawAndMeld(8)
@@ -260,7 +275,7 @@ def corporations2(p):
     p.drawAndMeld(8)
 
 def currency(p):
-    cs = p.chsAC()
+    cs = p.chsAC(text=comment(RETURN, num=ANY))
     s = set()
     for c in cs:
         p.rtrn(c)
@@ -270,11 +285,11 @@ def currency(p):
 
 def databases(p):
     for i in range((len(p.op.scores) + 1) // 2):
-        c = p.op.chsS(ps=False)
+        c = p.op.chsS(ps=False, text=comment(RETURN, may=False, from_=SCOREPILE))
         p.op.scoreRtrn(c)
 
 def democracy(p):
-    cs = p.chsAC()
+    cs = p.chsAC(text=comment(RETURN, num=ANY))
     for c in cs:
         p.rtrn(c)
     if cs and ('Democracy' not in p.ps.specs or len(cs) > p.ps.specs['Democracy']):
@@ -282,23 +297,25 @@ def democracy(p):
         p.ps.specs['Democracy'] = len(cs)
 
 def domestication(p):
-    c = p.chsSC(filter(lambda c: c.age == p.cages[0], p.cards), ps=False)
+    c = p.chsSC(filter(lambda c: c.age == p.cages[0], p.cards), ps=False, \
+        text=comment(MELD, may=False, age=LOWEST))
     if c:
         p.meld(c)
     p.draw(1)
 
 def ecology(p):
-    c = p.chsC()
+    c = p.chsC(text=comment(RETURN))
     if c:
         p.rtrn(c)
-        c = p.chsC(ps=False)
+        c = p.chsC(ps=False, text=comment(SCORE, may=False))
         if c:
             p.score(c)
         p.draw(10)
         p.draw(10)
 
 def education(p):
-    c = p.chsSC(filter(lambda c: c.age == p.sages[-1], p.scores))
+    c = p.chsSC(filter(lambda c: c.age == p.sages[-1], p.scores), \
+        text=comment(RETURN, age=HIGHEST, from_=SCOREPILE))
     if c:
         p.scoreRtrn(c)
         if p.sages:
@@ -307,13 +324,13 @@ def education(p):
 def electricity(p):
     cs = list(filter(lambda c: c and fc not in c[-1].icons, p.board))
     for i in range(len(cs)):
-        c = p.chsST(cs, ps=False)
+        c = p.chsST(cs, ps=False, text=comment(RETURN, may=False, noIcon=fc, from_=BOARD))
         cs.remove(p.board[c])
         p.boardRtrn(c)
         p.draw(8)
 
 def emancipation(p):
-    c = p.op.chsC(ps=False)
+    c = p.op.chsC(ps=False, text=comment(TRANSFER, may=False, to=his(SCOREPILE)))
     if c:
         p.nbTransfer(p.op.cards, p.scores, c)
         p.op.draw(6)
@@ -322,7 +339,7 @@ def emancipation2(p):
     p.maySplay((1, 4), 2, m=True)
 
 def empiricism(p):
-    cols = p.chsAT(mx=2)
+    cols = p.chsAT(mx=2, ps=False, text="You must choose 2 colors")
     c = p.drawAndReveal(9)
     if c.color in cols:
         p.meld(c)
@@ -334,23 +351,24 @@ def empiricism2(p):
         p.win('Empiricism')
 
 def encyclopedia(p):
-    if p.scores and p.chsYn():
+    if p.scores and p.chsYn(text=comment(MELD, num=HIGHEST, from_=SCOREPILE)):
         cs = list(filter(lambda c: c.age == p.sages[-1], p.scores))
         for i in range(len(cs)):
-            c = p.chsSC(cs, ps=False)
+            c = p.chsSC(cs, ps=False, text=comment(MELD, may=False, num=HIGHEST, from_=SCOREPILE))
             p.meld(c, score=True)
             cs.remove(c)
 
 def engineering(p):
     cols = filter(lambda c: p.op.board[c] and ct in p.op.board[c][-1].icons, range(5))
     for c in cols:
-        p.op.boardRtrn(c)
+        p.btnbTransfer(p.scores, c)
 
 def engineering2(p):
     p.maySplay(1, 1)
 
 def enterprise(p):
-    col = p.op.chsST(filter(lambda c: c and cr in c[-1].icons, p.op.board[:4]), ps=False)
+    col = p.op.chsST(filter(lambda c: c and cr in c[-1].icons, p.op.board[:4]), ps=False, \
+        text=comment(TRANSFER, may=False, color=non(PURPLE), icon=cr, from_=BOARD, to=his(BOARD)))
     if col:
         p.btbTransfer(col)
         p.op.drawAndMeld(4)
@@ -359,10 +377,10 @@ def enterprise2(p):
     p.maySplay(2, 2)
 
 def evolution(p):
-    if p.chsYn():
-        if p.chsYn():
+    if p.chsYn(text="You may choose to execute the dogma effect"):
+        if p.chsYn(text=comment(SCORE, drawAnd=True, age=8, custom="and then return a card from your score pile")):
             p.drawAndScore(8)
-            c = p.chsS(ps=False)
+            c = p.chsS(ps=False, text=comment(RETURN, may=False, from_=SCOREPILE))
             p.scoreRtrn(c)
         elif p.scores:
             p.draw(p.sages[-1])
@@ -376,7 +394,8 @@ def explosives(p):
     if p.op.cards:
         #print(p.op.cages, p.op.cages[-3:])
         for a in dc(p.op.cages[-3:]):
-            c = p.op.chsSC(filter(lambda c: c.age == a, p.op.cards), ps=False)
+            c = p.op.chsSC(filter(lambda c: c.age == a, p.op.cards), ps=False, \
+                text=comment(TRANSFER, may=False, age=a, to=HAND))
             #print(p.op.cards, c, a)
             p.nbTransfer(p.op.cards, p.cards, c)
         if not p.op.cards:
@@ -387,7 +406,8 @@ def fermenting(p):
         p.draw(2)
 
 def feudalism(p):
-    c = p.op.chsSC(filter(lambda c: ct in c.icons, p.op.cards), ps=False)
+    c = p.op.chsSC(filter(lambda c: ct in c.icons, p.op.cards), ps=False, \
+        text=comment(TRANSFER, may=False, icon=ct, to=his(HAND)))
     if c:
         p.nbTransfer(p.op.cards, p.cards, c)
 
@@ -408,12 +428,14 @@ def fission(p):
 
 def fission2(p):
     if 'Fission' not in p.ps.dones:
-        if p.chsYn():
-            col = p.chsST(filter(lambda c: c, p.op.board), ps=False, op=True)
+        if p.chsYn(text="You must choose whether to return a top card from his board"):
+            col = p.chsST(filter(lambda c: c, p.op.board), ps=False, op=True, \
+                text=comment(RETURN, may=False, custom="from his board", from_=None))
             if col:
                 p.op.boardRtrn(col)
         else:
-            col = p.chsST(filter(lambda c: c and c[-1].name != 'Fission', p.board), ps=False)
+            col = p.chsST(filter(lambda c: c and c[-1].name != 'Fission', p.board), ps=False, \
+                text=comment(RETURN, may=False, color=non(RED), from_=BOARD))
             if col:
                 p.boardRtrn(col)
 
@@ -427,8 +449,7 @@ def flight2(p):
 def genetics(p):
     c = p.drawAndMeld(10, rtrn=True)
     for cd in [p.board[c.color][i] for i in range(len(p.board[c.color])-1)]:
-        c = p.op.chsSC(p.board[c.color], ps=False)
-        p.boardScore(c.color, card=c)
+        p.boardScore(c.color, card=cd)
 
 def globalization(p):
     col = p.op.chsST(filter(lambda c: c and lf in c[-1].icons, p.op.board), ps=False)

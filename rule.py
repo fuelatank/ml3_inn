@@ -1,4 +1,5 @@
 #TabNine::sem
+from comments import comment
 from cards import ages, colors, ics, funcs, dems, idxs, msgs, spec_names, conds, cr, lf, lb, ct, fc, cl
 
 import random
@@ -31,6 +32,8 @@ SPECIALS = ['Monument', 'Empire', 'World', 'Wonder', 'Universe']
 OBS = "obs"
 VLD = "valids"
 TP = "type"
+TXT = "text"
+CHOICES = "choices"
 
 class WinError(Exception):
     def __init__(self, *args, **kwargs):
@@ -236,7 +239,7 @@ class Player:
                 # need to fix this here
             else:
                 resultDict[OBS] = None
-        if VLD in requireDict:
+        if VLD in requireDict or CHOICES in requireDict:
             if self.type == "main":
                 l = [0]
                 for age in self.canAchieve():
@@ -277,26 +280,68 @@ class Player:
             else:
                 raise ValueError(f"invalid observation type: {self.type}")
             resultDict[VLD] = l
+        if TXT in requireDict:
+            text = self.kwargs.get("text", "")
+            resultDict[TXT] = text
+        if CHOICES in requireDict:
+            choices = []
+            for n in l:
+                if self.type == "main":
+                    if n == 0:
+                        choices.append("draw a card")
+                    elif n < 10:
+                        choices.append(f"achieve {n}")
+                    elif n < 15:
+                        choices.append(f"execute {self.board[n-10][-1]}")
+                    else:
+                        choices.append(f"meld {self.mcds[n-15]}")
+                elif self.type == "oc" or self.type == "ac":
+                    if n < self.cdslen:
+                        choices.append(self.mcds[n].name)
+                    else:
+                        choices.append("pass")
+                elif self.type == "ot":
+                    if n < 5:
+                        choices.append(NUMTOCOL[n])
+                    else:
+                        choices.append("pass")
+                elif self.type == "at":
+                    if n < 10:
+                        choices.append(NUMTOCOL[n % 5])
+                    else:
+                        choices.append("pass")
+                elif self.type == "age":
+                    choices.append(str(n + 1))
+                elif self.type == "yn":
+                    choices.append("yes" if n == 1 else "no")
+                elif self.type == "r":
+                    choices.append("got it")
+                else:
+                    raise ValueError(f"invalid observation type: {self.type}")
+            resultDict[CHOICES] = choices
+        if TP in requireDict:
+            resultDict[TP] = self.type
         return resultDict
+        
     
     def getMove(self):
         return self.chsX("main")
     
-    def chsSC(self, cs, ps=True):
+    def chsSC(self, cs, ps=True, text=""):
         cs = list(cs)
         if cs:
-            r = self.chsX("oc", cs, ps=ps)
+            r = self.chsX("oc", cs, ps=ps, text=text)
             return self.mcds[r] if r < self.cdslen else None
         else:
             return None
 
-    def chsC(self, ps=True):
-        return self.chsSC(self.cards, ps=ps)
+    def chsC(self, ps=True, text=""):
+        return self.chsSC(self.cards, ps=ps, text=text)
 
-    def chsS(self, ps=True):
-        return self.chsSC(self.scores, ps=ps)
+    def chsS(self, ps=True, text=""):
+        return self.chsSC(self.scores, ps=ps, text=text)
 
-    def chsASC(self, cs, mx=None, ps=True):
+    def chsASC(self, cs, mx=None, ps=True, text=""):
         #obs = self.getObs()
 
         # get indices of cards as valids
@@ -309,7 +354,7 @@ class Player:
         for i in range(mx):
             if l:
                 #obs[3] = chs # set chosen to observation
-                r = self.chsX("ac", chs, l)
+                r = self.chsX("ac", chs, l, text=text)
             else:
                 return [self.mcds[i] for i in chs]
             if r == self.cdslen: # passed
@@ -318,13 +363,13 @@ class Player:
             l.remove(r)
         return [self.mcds[i] if i < self.cdslen else None for i in chs]
 
-    def chsAC(self, mx=None, ps=True):
-        return self.chsASC(self.cards, mx=mx, ps=ps)
+    def chsAC(self, mx=None, ps=True, text=""):
+        return self.chsASC(self.cards, mx=mx, ps=ps, text=text)
 
-    def chsAS(self, mx=None, ps=True):
-        return self.chsASC(self.scores, mx=mx, ps=ps)
+    def chsAS(self, mx=None, ps=True, text=""):
+        return self.chsASC(self.scores, mx=mx, ps=ps, text=text)
     
-    def chsST(self, cs, ps=True, op=False):
+    def chsST(self, cs, ps=True, op=False, text=""):
         cs = list(cs)
         if op:
             bd = self.op.board
@@ -333,15 +378,15 @@ class Player:
             bd = self.board
             add = 0
         if cs:
-            r = self.chsX("ot", cs, bd, add, ps=ps)
+            r = self.chsX("ot", cs, bd, add, ps=ps, text=text)
             return r - add if r < 10 else None
         else:
             return None
 
-    def chsT(self, ps=True):
-        return self.chsST(self.board, ps=ps)
+    def chsT(self, ps=True, text=""):
+        return self.chsST(self.board, ps=ps, text=text)
 
-    def chsAT(self, mx=None):
+    def chsAT(self, mx=None, text=""):
         #obs = self.getObs()
         if not mx:
             mx = 5
@@ -349,7 +394,7 @@ class Player:
         chs = [0, 1, 2, 3, 4]
         for _ in range(mx):
             #obs[3] = cs
-            c = self.chsX("at", cs, chs)
+            c = self.chsX("at", cs, chs, text=text)
             if not c:
                 return cs
             cs.append(c)
@@ -357,11 +402,11 @@ class Player:
         return cs
     
     def chsA(self):
-        r = self.chsX("age")
+        r = self.chsX("age", text="You must choose an age")
         return r + 1
     
-    def chsYn(self):
-        return self.chsX("yn")
+    def chsYn(self, text=""):
+        return self.chsX("yn", text=text)
     
     def _reveal(self, cs):
         self.chsX("r", cs)
