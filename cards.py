@@ -367,7 +367,8 @@ def engineering2(p):
     p.maySplay(1, 1)
 
 def enterprise(p):
-    col = p.op.chsST(filter(lambda c: c and cr in c[-1].icons, p.op.board[:4]), ps=False)
+    col = p.op.chsST(filter(lambda c: c and cr in c[-1].icons, p.op.board[:4]), ps=False, \
+        text=comment(TRANSFER, may=False, color=non(PURPLE), icon=cr, from_=BOARD, to=his(BOARD)))
     if col:
         p.btbTransfer(col)
         p.op.drawAndMeld(4)
@@ -376,10 +377,10 @@ def enterprise2(p):
     p.maySplay(2, 2)
 
 def evolution(p):
-    if p.chsYn():
-        if p.chsYn():
+    if p.chsYn(text="You may choose to execute the dogma effect"):
+        if p.chsYn(text=comment(SCORE, drawAnd=True, age=8, custom="and then return a card from your score pile")):
             p.drawAndScore(8)
-            c = p.chsS(ps=False)
+            c = p.chsS(ps=False, text=comment(RETURN, may=False, from_=SCOREPILE))
             p.scoreRtrn(c)
         elif p.scores:
             p.draw(p.sages[-1])
@@ -393,7 +394,8 @@ def explosives(p):
     if p.op.cards:
         #print(p.op.cages, p.op.cages[-3:])
         for a in dc(p.op.cages[-3:]):
-            c = p.op.chsSC(filter(lambda c: c.age == a, p.op.cards), ps=False)
+            c = p.op.chsSC(filter(lambda c: c.age == a, p.op.cards), ps=False, \
+                text=comment(TRANSFER, may=False, age=a, to=HAND))
             #print(p.op.cards, c, a)
             p.nbTransfer(p.op.cards, p.cards, c)
         if not p.op.cards:
@@ -404,7 +406,8 @@ def fermenting(p):
         p.draw(2)
 
 def feudalism(p):
-    c = p.op.chsSC(filter(lambda c: ct in c.icons, p.op.cards), ps=False)
+    c = p.op.chsSC(filter(lambda c: ct in c.icons, p.op.cards), ps=False, \
+        text=comment(TRANSFER, may=False, icon=ct, to=his(HAND)))
     if c:
         p.nbTransfer(p.op.cards, p.cards, c)
 
@@ -425,12 +428,14 @@ def fission(p):
 
 def fission2(p):
     if 'Fission' not in p.ps.dones:
-        if p.chsYn():
-            col = p.chsST(filter(lambda c: c, p.op.board), ps=False, op=True)
+        if p.chsYn(text="You must choose whether to return a top card from his board"):
+            col = p.chsST(filter(lambda c: c, p.op.board), ps=False, op=True, \
+                text=comment(RETURN, may=False, custom="from his board", from_=None))
             if col:
                 p.op.boardRtrn(col)
         else:
-            col = p.chsST(filter(lambda c: c and c[-1].name != 'Fission', p.board), ps=False)
+            col = p.chsST(filter(lambda c: c and c[-1].name != 'Fission', p.board), ps=False, \
+                text=comment(RETURN, may=False, color=non(RED), from_=BOARD))
             if col:
                 p.boardRtrn(col)
 
