@@ -449,8 +449,7 @@ def flight2(p):
 def genetics(p):
     c = p.drawAndMeld(10, rtrn=True)
     for cd in [p.board[c.color][i] for i in range(len(p.board[c.color])-1)]:
-        c = p.op.chsSC(p.board[c.color], ps=False)
-        p.boardScore(c.color, card=c)
+        p.boardScore(c.color, card=cd)
 
 def globalization(p):
     col = p.op.chsST(filter(lambda c: c and lf in c[-1].icons, p.op.board), ps=False)
