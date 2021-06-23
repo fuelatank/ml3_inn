@@ -58,7 +58,7 @@ class BaseAgent:
     def __init__(self):
         pass
 
-    def step(self, obs):
+    def step(self):
         raise NotImplementedError
     
     def finish_path(self, r=None):
@@ -76,15 +76,20 @@ class QAgent(BaseAgent):
         self.lastObs = None
         self.lastAction = None
         self.collecting = True
+        self.getInfo = lambda x: None
+        self.infoDict = {"obs": {"obsType": "getObs"}, "valids": None, "type": None}
 
     def finish_path(self, r=None):
         if self.collecting:
             self.buf.finish_path(r)
         self.model.reset_states()
 
-    def step(self, obs, epsilon=0.2):
+    def step(self, epsilon=0.2):
+        info = self.getInfo(self.infoDict)
+        obs = info["obs"]
+        valids = info["valids"]
         if random.random() < epsilon:
-            action = random.choice(obs.valids)
+            action = random.choice(valids)
             tfobs = TFObservation(obs)
             r = action
             action += tfobs.typeIndex
@@ -114,7 +119,7 @@ class ModelAgent(BaseAgent):
         super(ModelAgent, self).__init__()
         self.model = model
     
-    def step(self, obs):
+    def step(self):
         tfobs = TFObservation(obs)
         action = int(self.model.step(tfobs))
         r = action - tfobs.typeIndex
@@ -126,9 +131,11 @@ class ModelAgent(BaseAgent):
 class RandomAgent:
     def __init__(self):
         self.trainable = True
+        self.infoDict = {"valids": None}
 
-    def step(self, obs):
-        return random.choice(obs.valids)
+    def step(self):
+        obsDict = self.getInfo(self.infoDict)
+        return random.choice(obsDict["valids"])
 
 if __name__ == '__main__':
     qmodel = QModel(300, 20, [128, 128], 1e-4, rnn='gru')
