@@ -234,7 +234,7 @@ class Player:
                 elif self.type == "r":
                     resultDict[OBS][-1] = [self.mcds.index(c) for c in self.args[0]]
             elif requireDict[OBS]["obsType"] == "custom":
-                resultDict[OBS] = self.makeObs()
+                resultDict[OBS] = self.public()
                 # set chosen, etc.
                 # need to fix this here
             else:
@@ -881,6 +881,18 @@ class Player:
     def setAgent(self, agent):
         self.agent = agent
         self.agent.getInfo = self.getInformation
+    
+    def public(self):
+        return Public(self, notCopies=["op", "ps", "agent"])
+
+class Public:
+    def __init__(self, player, notCopies):
+        for k, v in vars(player).items():
+            if k in notCopies:
+                continue
+            if hasattr(v, "public"):
+                v = v.public()
+            setattr(self, k, v)
 
 class Game:
     def __init__(self, cds=maincds, specs=mainspecs, acds=mainacds, path=''):
