@@ -1,4 +1,5 @@
 #TabNine::sem
+from comments import comment
 from cards import ages, colors, ics, funcs, dems, idxs, msgs, spec_names, conds, cr, lf, lb, ct, fc, cl
 
 import random
@@ -28,6 +29,11 @@ SPLAYICONS = [[], [3], [0, 1], [1, 2, 3]]
 SIDES = [('top', 'bottom'), ('right', 'left'), ('left', 'right'), ('bottom', 'top')]
 DIRS = [['unsplays', ''], ['splays', ' left'], ['splays', ' right'], ['splays', ' up']]
 SPECIALS = ['Monument', 'Empire', 'World', 'Wonder', 'Universe']
+OBS = "obs"
+VLD = "valids"
+TP = "type"
+TXT = "text"
+CHOICES = "choices"
 
 class WinError(Exception):
     def __init__(self, *args, **kwargs):
@@ -155,8 +161,6 @@ class Player:
         self.colIcons = {i: [0, 0, 0, 0, 0] for i in ICONS}
         self.board = [deque() for c in range(5)]
         self.splays = [0, 0, 0, 0, 0]
-        self.cobs = [set() for i in range(10)]
-        self.sobs = [set() for i in range(10)]
         self.acds = None
         self.op = None
         self.ps = None
@@ -165,6 +169,10 @@ class Player:
         self.tucked = 0
         self.scored = 0
         self.log = None
+        self.agent = None
+        self.type = None
+        self.args = None
+        self.kwargs = None
     
     def __repr__(self):
         return self.name
@@ -207,16 +215,201 @@ class Player:
         raise WinError(self)
 
     def drawStack(self, col):
-        raise NotImplementedError
-
-    def chsST(self, cs, ps=True, op=False):
-        raise NotImplementedError
-
-    def chsYn(self):
-        raise NotImplementedError
-
-    def _reveal(self, cs):
         pass
+    
+    def chsX(self, type_, *args, **kwargs):
+        self.type = type_
+        self.args = args
+        self.kwargs = kwargs
+        return self.agent.step()
+    
+    def getInformation(self, requireDict):
+        resultDict = {}
+        if OBS in requireDict:
+            if requireDict[OBS]["obsType"] == "getObs":
+                resultDict[OBS] = getObs(self)
+                # set chosen and reveal when observation is made by getObs
+                if self.type == "ac" or self.type == "at":
+                    resultDict[OBS][3] = self.args[0]
+                elif self.type == "r":
+                    resultDict[OBS][-1] = [self.mcds.index(c) for c in self.args[0]]
+            elif requireDict[OBS]["obsType"] == "custom":
+                resultDict[OBS] = self.makeObs()
+                # set chosen, etc.
+                # need to fix this here
+            else:
+                resultDict[OBS] = None
+        if VLD in requireDict or CHOICES in requireDict:
+            if self.type == "main":
+                l = [0]
+                for age in self.canAchieve():
+                    l.append(age)
+                for _, c in enumerate(self.board):
+                    if c:
+                        l.append(c[-1].color + 10)
+                for c in self.cards:
+                    l.append(self.mcds.index(c) + 15)
+            elif self.type == "oc":
+                cs = self.args[0]
+                ps = self.kwargs["ps"]
+                l = []
+                for c in cs:
+                    l.append(self.mcds.index(c))
+                if ps:
+                    l.append(self.cdslen)
+            elif self.type == "ac" or self.type == "at":
+                # set chosen when observation is made by getObs
+                if OBS in requireDict and requireDict[OBS]["obsType"] == "getObs":
+                    resultDict[OBS][3] = self.args[0]
+                else:
+                    # need to fix this in other case
+                    pass
+                l = self.args[1] # valids computed in chsASC or chsAT
+            elif self.type == "ot":
+                l = []
+                for c in self.args[0]:
+                    l.append(self.args[1].index(c) + self.args[2])
+                if self.kwargs["ps"]:
+                    l.append(10)
+            elif self.type == "age":
+                l = list(range(10))
+            elif self.type == "yn":
+                l = [0, 1]
+            elif self.type == "r":
+                l = [0]
+            else:
+                raise ValueError(f"invalid observation type: {self.type}")
+            resultDict[VLD] = l
+        if TXT in requireDict:
+            text = self.kwargs.get("text", "")
+            resultDict[TXT] = text
+        if CHOICES in requireDict:
+            choices = []
+            for n in l:
+                if self.type == "main":
+                    if n == 0:
+                        choices.append("draw a card")
+                    elif n < 10:
+                        choices.append(f"achieve {n}")
+                    elif n < 15:
+                        choices.append(f"execute {self.board[n-10][-1]}")
+                    else:
+                        choices.append(f"meld {self.mcds[n-15]}")
+                elif self.type == "oc" or self.type == "ac":
+                    if n < self.cdslen:
+                        choices.append(self.mcds[n].name)
+                    else:
+                        choices.append("pass")
+                elif self.type == "ot":
+                    if n < 5:
+                        choices.append(NUMTOCOL[n])
+                    else:
+                        choices.append("pass")
+                elif self.type == "at":
+                    if n < 10:
+                        choices.append(NUMTOCOL[n % 5])
+                    else:
+                        choices.append("pass")
+                elif self.type == "age":
+                    choices.append(str(n + 1))
+                elif self.type == "yn":
+                    choices.append("yes" if n == 1 else "no")
+                elif self.type == "r":
+                    choices.append("got it")
+                else:
+                    raise ValueError(f"invalid observation type: {self.type}")
+            resultDict[CHOICES] = choices
+        if TP in requireDict:
+            resultDict[TP] = self.type
+        return resultDict
+        
+    
+    def getMove(self):
+        return self.chsX("main")
+    
+    def chsSC(self, cs, ps=True, text=""):
+        cs = list(cs)
+        if cs:
+            r = self.chsX("oc", cs, ps=ps, text=text)
+            return self.mcds[r] if r < self.cdslen else None
+        else:
+            return None
+
+    def chsC(self, ps=True, text=""):
+        return self.chsSC(self.cards, ps=ps, text=text)
+
+    def chsS(self, ps=True, text=""):
+        return self.chsSC(self.scores, ps=ps, text=text)
+
+    def chsASC(self, cs, mx=None, ps=True, text=""):
+        #obs = self.getObs()
+
+        # get indices of cards as valids
+        l = list(map(self.mcds.index, cs))
+        if not mx: # max number of cards to choose
+            mx = len(l) # you can choose at most len(l) cards
+        chs = [] # chosen cards
+        if ps:
+            l.append(self.cdslen) # add pass action
+        for i in range(mx):
+            if l:
+                #obs[3] = chs # set chosen to observation
+                r = self.chsX("ac", chs, l, text=text)
+            else:
+                return [self.mcds[i] for i in chs]
+            if r == self.cdslen: # passed
+                return [self.mcds[i] for i in chs]
+            chs.append(r)
+            l.remove(r)
+        return [self.mcds[i] if i < self.cdslen else None for i in chs]
+
+    def chsAC(self, mx=None, ps=True, text=""):
+        return self.chsASC(self.cards, mx=mx, ps=ps, text=text)
+
+    def chsAS(self, mx=None, ps=True, text=""):
+        return self.chsASC(self.scores, mx=mx, ps=ps, text=text)
+    
+    def chsST(self, cs, ps=True, op=False, text=""):
+        cs = list(cs)
+        if op:
+            bd = self.op.board
+            add = 5
+        else:
+            bd = self.board
+            add = 0
+        if cs:
+            r = self.chsX("ot", cs, bd, add, ps=ps, text=text)
+            return r - add if r < 10 else None
+        else:
+            return None
+
+    def chsT(self, ps=True, text=""):
+        return self.chsST(self.board, ps=ps, text=text)
+
+    def chsAT(self, mx=None, text=""):
+        #obs = self.getObs()
+        if not mx:
+            mx = 5
+        cs = []
+        chs = [0, 1, 2, 3, 4]
+        for _ in range(mx):
+            #obs[3] = cs
+            c = self.chsX("at", cs, chs, text=text)
+            if c is None:
+                return cs
+            cs.append(c)
+            chs.remove(c)
+        return cs
+    
+    def chsA(self):
+        r = self.chsX("age", text="You must choose an age")
+        return r + 1
+    
+    def chsYn(self, text=""):
+        return self.chsX("yn", text=text)
+    
+    def _reveal(self, cs):
+        self.chsX("r", cs)
 
     def maySplay(self, col, d, m=False):
         if m:
@@ -684,137 +877,10 @@ class Player:
 
     def logHand(self):
         self.ailog("%s's cards: %s" % (self, self.cards))
-
-class Players:
-    def __init__(self, p1, p2, cds=maincds, specs=mainspecs, acds=mainacds, path=''):
-        self.p1 = p1
-        self.p2 = p2
-        self.p1.op = self.p2
-        self.p2.op = self.p1
-        self.p1.ps = self
-        self.p2.ps = self
-        self.ps = {1: self.p1, -1: self.p2}
-        self.mp = self.p1
-        self.cds = Cds(cds, specs)
-        self.p1.cds = self.cds
-        self.p2.cds = self.cds
-        self.p1.mcds = cds
-        self.p2.mcds = cds
-        self.p1.cdslen = len(self.p1.mcds)
-        self.p2.cdslen = len(self.p2.mcds)
-        self.p1.acds = acds
-        self.p2.acds = acds
-        self.mspecs = specs
-        self.history = []
-        self.p1.lgr = lg.getLogger('p1')
-        self.p2.lgr = lg.getLogger('p2')
-        self.p1.olgr = lg.getLogger('op1')
-        self.p2.olgr = lg.getLogger('op2')
-        self.p1.lgr.setLevel(lg.DEBUG)
-        self.p2.lgr.setLevel(lg.DEBUG)
-        self.p1.olgr.setLevel(lg.DEBUG)
-        self.p2.olgr.setLevel(lg.DEBUG)
-        self.p1.fh = lg.FileHandler(path+'p1.log', MODE)
-        self.p2.fh = lg.FileHandler(path+'p2.log', MODE)
-        self.fh = lg.FileHandler(path+'main.log', MODE)
-        self.ch = lg.StreamHandler()
-        self.p1.fh.setLevel(lg.DEBUG)
-        self.p2.fh.setLevel(lg.DEBUG)
-        self.fh.setLevel(lg.DEBUG)
-        self.ch.setLevel(lg.WARNING)
-        t_format = lg.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        nt_format = lg.Formatter('%(name)s - %(levelname)s - %(message)s')
-        self.p1.fh.setFormatter(nt_format)
-        self.p2.fh.setFormatter(nt_format)
-        self.fh.setFormatter(t_format)
-        self.ch.setFormatter(nt_format)
-        self.p1.lgr.addHandler(self.p1.fh)
-        self.p1.lgr.addHandler(self.fh)
-        self.p1.olgr.addHandler(self.p2.fh)
-        #self.p1.olgr.addHandler(self.ch)
-        self.p2.lgr.addHandler(self.p2.fh)
-        self.p2.lgr.addHandler(self.fh)
-        self.p2.olgr.addHandler(self.p1.fh)
-        #self.p2.olgr.addHandler(self.ch)
-        self.dones = set()
-        self.specs = {}
-        self.executing = []
-        self.shared = []
-        self.win = None
-        self.turn = 1
-        self.action = 1
-        self.count = 0
-        self.executedcount = Counter()
-        self.init()
     
-    def init(self):
-        self.p1.draw(1, shr=False)
-        self.p1.draw(1, shr=False)
-        self.p2.draw(1, shr=False)
-        self.p2.draw(1, shr=False)
-        c1 = self.p1.chsC(ps=False)
-        c2 = self.p2.chsC(ps=False)
-        self.p1.meld(c1, shr=False)
-        self.p2.meld(c2, shr=False)
-        del c1, c2
-    
-    def oneStep(self):
-        move = self.mp.getMove()
-        done = self.mp.makeMove(move)
-        self.count += 1
-        if done:
-            return done
-        if self.action == 1:
-            self.action = 0
-            self.turn = -self.turn
-            self.p1.tucked = 0
-            self.p1.scored = 0
-            self.p2.tucked = 0
-            self.p2.scored = 0
-            self.changeTurn()
-        else:
-            self.action = 1
-        return None
-
-    def changeTurn(self):
-        self.mp = self.mp.op
-
-    def logall(self):
-        self.p1.logHand()
-        self.p1.logSA()
-        self.p1.logBoard()
-        self.p2.logBoard()
-        self.p2.logSA()
-        self.p2.logHand()
-
-    def reset(self):
-        self.turn = 1
-        self.action = 1
-        self.count = 0
-        self.cds = Cds(self.p1.mcds, self.mspecs)
-        self.p1.cds = self.cds
-        self.p2.cds = self.cds
-        self.mp = self.p1
-        for p in [self.p1, self.p2]:
-            p.tucked = 0
-            p.scored = 0
-            p.scores = []
-            p.cards = []
-            p.achs = []
-            p.cages = []
-            p.sages = []
-            p.board = [deque() for i in range(5)]
-            p.splays = [0, 0, 0, 0, 0]
-            p.icons = {i: 0 for i in ICONS}
-            p.colIcons = {i: [0, 0, 0, 0, 0] for i in ICONS}
-        self.init()
-
-    def run(self, maxStep=500):
-        for _ in range(maxStep):
-            r = self.oneStep()
-            if r:
-                return r
-        return 'tie'
+    def setAgent(self, agent):
+        self.agent = agent
+        self.agent.getInfo = self.getInformation
 
 class Game:
     def __init__(self, cds=maincds, specs=mainspecs, acds=mainacds, path=''):
@@ -914,6 +980,7 @@ class Game:
         self.turn = 1
         self.action = 1
         self.count = 0
+        self.history = []
         self.cds = Cds(self.p1.mcds, self.mspecs)
         self.p1.cds = self.cds
         self.p2.cds = self.cds
@@ -947,7 +1014,6 @@ class Game:
         self.p2.cdslen = len(self.p2.mcds)
         self.p1.acds = self.acds
         self.p2.acds = self.acds
-        self.history = []
         self.p1.lgr = self.p1lgr
         self.p2.lgr = self.p2lgr
         self.p1.olgr = self.p1olgr
@@ -964,9 +1030,9 @@ class Game:
                 return r
         return 'tie'
 
-def getObs(ps):
-    mp = ps.mp
-    op = ps.mp.op
+def getObs(mp):
+    ps = mp.ps
+    op = mp.op
     cards = np.zeros((105,), dtype=np.float32)
     scores = np.zeros((105,), dtype=np.float32)
     cardsi = [i for i in range(105) if mp.mcds[i] in mp.cards]
