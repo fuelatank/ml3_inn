@@ -203,8 +203,9 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         #QtCore.QMetaObject.connectSlotsByName(MainWindow)
     
-    def loop(self, player, actions):
+    def loop(self, player, actions, text):
         buttons = []
+        label = QLabel()
         for name, action in actions:
             button = self.makeButton(name, action)
             self.verticalLayout_2.addWidget(button)
@@ -279,6 +280,14 @@ class Ui_MainWindow(object):
         self.pushButton_2.setText(_translate("MainWindow", "PushButton"))
         self.pushButton.setText(_translate("MainWindow", "PushButton"))
 
+class PyQt5User:
+    def __init__(self, window):
+        self.window = window
+        self.infoDict = {"valids": None, "text": None, "choices": None}
+    
+    def step(self):
+        obsDict = self.getInfo(self.infoDict)
+        r = self.window.loop()
 
 if __name__ == "__main__":
     import sys
