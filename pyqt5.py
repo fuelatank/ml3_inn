@@ -283,11 +283,20 @@ class Ui_MainWindow(object):
 class PyQt5User:
     def __init__(self, window):
         self.window = window
-        self.infoDict = {"valids": None, "text": None, "choices": None}
+        self.infoDict = {
+            "valids": None, 
+            "text": None, 
+            "choices": None, 
+            "obs": {"obsType": "custom"}
+        }
     
     def step(self):
         obsDict = self.getInfo(self.infoDict)
-        r = self.window.loop()
+        r = self.window.loop(
+            obsDict["obs"],
+            zip(obsDict["choices"], obsDict["valids"]),
+            obsDict["text"]
+        )
 
 if __name__ == "__main__":
     import sys
