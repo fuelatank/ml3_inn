@@ -866,7 +866,7 @@ class Player:
         self.agent.getInfo = self.getInformation
     
     def public(self):
-        return Public(self, notCopies=["op", "ps", "agent"])
+        return Public(self, notCopies=["op", "ps", "agent", "fh", "lgr", "olgr"])
 
 class Public:
     def __init__(self, player, notCopies):
