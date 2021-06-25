@@ -145,16 +145,57 @@ class Cds:
                     self.idxes.remove(i)
                     return c
 
+class AgedCardPile:
+    def __init__(self):
+        self.cards = []
+        self.ages = []
+    
+    def add(self, card):
+        pos = bs.bisect(self.ages, card.age)
+        self.ages.insert(pos, card.age)
+        self.cards.insert(pos, card)
+    
+    def remove(self, card):
+        self.cards.remove(card)
+        self.ages.remove(card.age)
+    
+    def clear(self):
+        self.cards = []
+        self.ages = []
+    
+    def sum(self):
+        return sum(self.ages)
+    
+    def high(self, n=1):
+        if n == 1:
+            return self.ages[-1]
+        return dc(self.ages[-n:])
+    
+    def low(self, n=1):
+        if n == 1:
+            return self.ages[0]
+        return dc(self.ages[:n])
+    
+    def ageSet(self):
+        return set(self.ages)
+    
+    def public(self):
+        return list(map(self.ages.count, range(1, 11)))
+    
+    def __iter__(self):
+        return iter(self.cards)
+    
+    def __len__(self):
+        return len(self.cards)
+
 class Player:
     def __init__(self, name, cds=None, mcds=None):
         self.name = name
         self.cds = cds
         self.mcds = []
         self.cdslen = None
-        self.cards = []
-        self.cages = []
-        self.scores = []
-        self.sages = []
+        self.cards = AgedCardPile()
+        self.scores = AgedCardPile()
         self.achs = []
         self.icons = {i: 0 for i in ICONS}
         #self.colIcons = pd.DataFrame([[0 for i in range(6)] for j in range(5)], columns=ICONS)
@@ -189,8 +230,8 @@ class Player:
                 self.meld(self.mcds[move-15], shr=False)
         except WinError as e:
             if str(e) == 'score':
-                v = sum(self.sages)
-                ov = sum(self.op.sages)
+                v = self.scores.sum()
+                ov = self.op.scores.sum()
                 self.ailog('Someone wants to draw a 11')
                 if v > ov:
                     self.ailog('%s wins with more scores: %d-%d', self, v, ov)
@@ -459,7 +500,7 @@ class Player:
             self.colIcons[ic][col] = cnt
     
     def canAchieve(self):
-        mx = min(sum(self.sages) // 5, max([0] + list(map(lambda c: c[-1].age, filter(lambda c: c, self.board)))))
+        mx = min(self.scores.sum() // 5, max([0] + list(map(lambda c: c[-1].age, filter(lambda c: c, self.board)))))
         r = []
         for a in self.cds.achs:
             if a.age <= mx:
@@ -475,31 +516,17 @@ class Player:
                 self.specAchieve(c.i)
 
     def drawMax(self):
-        for _ in (self.cards, self.cages, self.scores, self.sages):
-            #self.adlog(cs)
-            pass
         ags = map(lambda c: c[-1].age if c else 0, self.board)
         age = max(ags)
         c = self.cds.pop(age)
-        pos = bs.bisect(self.cages, c.age)
-        self.cages.insert(pos, c.age)
-        self.cards.insert(pos, c)
+        self.cards.add(c)
         c.cm(self.masters[0])
         self.ilog('%s draws a %d %s', self, c.age, c)
         self.oilog('%s draws a %d', self, c.age)
     
     def draw(self, age, shr=True):
-        for _ in (self.cards, self.cages, self.scores, self.sages):
-            #self.adlog(cs)
-            pass
-        if list(map(lambda c: c.age, self.cards)) != self.cages:
-            raise Exception()
-        if list(map(lambda c: c.age, self.scores)) != self.sages:
-            raise Exception()
         c = self.cds.pop(age)
-        pos = bs.bisect(self.cages, c.age)
-        self.cages.insert(pos, c.age)
-        self.cards.insert(pos, c)
+        self.cards.add(c)
         c.cm(self.masters[0])
         self.ilog('%s draws a %d %s', self, c.age, c)
         self.oilog('%s draws a %d', self, c.age)
@@ -510,7 +537,6 @@ class Player:
         #c = self.cards.pop(idx)
         if score:
             self.scores.remove(c)
-            self.sages.remove(c.age)
         elif frm is not None:
             frm.remove(c)
         else:
@@ -518,11 +544,10 @@ class Player:
                 self.ailog('Error: list.remove(x): x not in list')
                 self.ailog("%s's cards: %s", self, self.cards)
                 self.ailog("%s's going to meld %s", self, c)
-                self.ailog("%s's cages: %s", self, self.cages)
+                self.ailog("%s's cages: %s", self, self.cards.ages)
                 self.ailog("executing: %s", self.ps.executing)
                 breakpoint()
             self.cards.remove(c)
-            self.cages.remove(c.age)
         self.board[c.color].append(c)
         self.cIcon(c.color)
         self.drawStack(c.color)
@@ -537,12 +562,11 @@ class Player:
             self.ailog('Error: list.remove(x): x not in list')
             self.ailog("%s's cards: %s", self, self.cards)
             self.ailog("%s's going to meld %s", self, c)
-            self.ailog("%s's cages: %s", self, self.cages)
+            self.ailog("%s's cages: %s", self, self.cards.ages)
             self.ailog("executing: %s", self.ps.executing)
             breakpoint()
         #c = self.cards.pop(idx)
         self.cards.remove(c)
-        self.cages.remove(c.age)
         self.board[c.color].appendleft(c)
         self.cIcon(c.color)
         self.drawStack(c.color)
@@ -554,10 +578,7 @@ class Player:
     def score(self, c):
         #c = self.cards.pop(idx)
         self.cards.remove(c)
-        self.cages.remove(c.age)
-        pos = bs.bisect(self.sages, c.age)
-        self.sages.insert(pos, c.age)
-        self.scores.insert(pos, c)
+        self.scores.add(c)
         c.cm(self.masters[2])
         self.scored += 1
         self.ckSpec([0])
@@ -575,9 +596,7 @@ class Player:
         else:
             c = self.board[col].pop()
         self.ckSplay(col)
-        pos = bs.bisect(self.sages, c.age)
-        self.sages.insert(pos, c.age)
-        self.scores.insert(pos, c)
+        self.scores.add(c)
         self.cIcon(col)
         self.drawStack(col)
         c.cm(self.masters[2])
@@ -589,7 +608,6 @@ class Player:
     def rtrn(self, c):
         #c = self.cards.pop(idx)
         self.cards.remove(c)
-        self.cages.remove(c.age)
         self.cds.appendleft(c)
         c.hide()
         self.ilog('%s returns a %d %s', self, c.age, c)
@@ -598,7 +616,6 @@ class Player:
     
     def scoreRtrn(self, c):
         self.scores.remove(c)
-        self.sages.remove(c.age)
         self.cds.appendleft(c)
         c.hide()
         self.ilog('%s returns a %d %s from his scores', self, c.age, c)
@@ -633,9 +650,7 @@ class Player:
     
     def drawAndScore(self, age):
         c = self.cds.pop(age)
-        pos = bs.bisect(self.sages, c.age)
-        self.sages.insert(pos, c.age)
-        self.scores.insert(pos, c)
+        self.scores.add(c)
         c.cm(self.masters[2])
         self.scored += 1
         self.ckSpec([0])
@@ -657,9 +672,7 @@ class Player:
     
     def drawAndReveal(self, age, shr=True):
         c = self.cds.pop(age)
-        pos = bs.bisect(self.cages, c.age)
-        self.cages.insert(pos, c.age)
-        self.cards.insert(pos, c)
+        self.cards.add(c)
         c.cm(self.masters[0])
         self.ailog('%s draws and reveals a %d %s', self, c.age, c)
         if shr:
@@ -739,14 +752,6 @@ class Player:
         if len(list(self.ps.executedcount)) == 105 and self.ps.executedcount.most_common()[-1][1] >= 50:
             pass#raise Exception()
     
-    def ageOf(self, cs):
-        if cs is self.cards:
-            return self.cages
-        elif cs is self.scores:
-            return self.sages
-        else:
-            return self.op.ageOf(cs)
-    
     def masterOf(self, cs):
         if cs is self.cards:
             return self.masters[0]
@@ -771,11 +776,7 @@ class Player:
 
     def nbTransfer(self, frm, to, c, s=False):
         frm.remove(c)
-        self.op.ageOf(frm).remove(c.age)
-        ages = self.ageOf(to)
-        pos = bs.bisect(ages, c.age)
-        ages.insert(pos, c.age)
-        to.insert(pos, c)
+        to.add(c)
         c.cm(self.masterOf(to))
         self.ps.shared[-1] = True
     
@@ -792,10 +793,7 @@ class Player:
     def btnbTransfer(self, to, col):
         c = self.op.board[col].pop()
         self.op.ckSplay(col)
-        ages = self.ageOf(to)
-        pos = bs.bisect(ages, c.age)
-        ages.insert(pos, c.age)
-        to.insert(pos, c)
+        to.add(c)
         self.op.cIcon(c.color)
         c.cm(self.masterOf(to))
         self.op.ckSpec([1, 2, 4])
@@ -803,7 +801,6 @@ class Player:
     
     def nbtbTransfer(self, frm, c):
         frm.remove(c)
-        self.op.ageOf(frm).remove(c.age)
         self.board[c.color].append(c)
         self.cIcon(c.color)
         c.cm(self.masters[1])
@@ -815,24 +812,14 @@ class Player:
         cs2 = cp(cs2)
         #p1 = self.pOf(m1)
         #p2 = self.pOf(m2)
-        ages1 = self.ageOf(m1)
-        ages2 = self.ageOf(m2)
         for c in cs1:
             #print(cs1, cs2, ages1, ages2, m1, m2)
             m1.remove(c)
-            #ages = self.ageOf(m2)
-            ages1.remove(c.age)
-            pos = bs.bisect(ages2, c.age)
-            ages2.insert(pos, c.age)
-            m2.insert(pos, c)
+            m2.add(c)
             c.cm(self.masterOf(m2))
         for c in cs2:
             m2.remove(c)
-            #ages = self.ageOf(m1)
-            ages2.remove(c.age)
-            pos = bs.bisect(ages1, c.age)
-            ages1.insert(pos, c.age)
-            m1.insert(pos, c)
+            m1.add(c)
             c.cm(self.masterOf(m1))
         self.ps.shared[-1] = True
 
@@ -842,11 +829,7 @@ class Player:
         for c, cs, ocs in ((c1, cs1, cs2), (c2, cs2, cs1)):
             #print(c, cs, ocs, self.ageOf(cs), self.ageOf(ocs))
             cs.remove(c)
-            self.ageOf(cs).remove(c.age)
-            ages = self.ageOf(ocs)
-            pos = bs.bisect(ages, c.age)
-            ages.insert(pos, c.age)
-            ocs.insert(pos, c)
+            ocs.add(c)
             c.cm(self.masterOf(ocs))
         self.ps.shared[-1] = True
 
@@ -1000,11 +983,9 @@ class Game:
         for p in [self.p1, self.p2]:
             p.tucked = 0
             p.scored = 0
-            p.scores = []
-            p.cards = []
+            p.scores.clear()
+            p.cards.clear()
             p.achs = []
-            p.cages = []
-            p.sages = []
             p.board = [deque() for i in range(5)]
             p.splays = [0, 0, 0, 0, 0]
             p.icons = {i: 0 for i in ICONS}
@@ -1047,8 +1028,8 @@ def getObs(mp):
     op = mp.op
     cards = np.zeros((105,), dtype=np.float32)
     scores = np.zeros((105,), dtype=np.float32)
-    cardsi = [i for i in range(105) if mp.mcds[i] in mp.cards]
-    scoresi = [i for i in range(105) if mp.mcds[i] in mp.scores]
+    cardsi = [i for i in range(105) if mp.mcds[i] in mp.cards.cards]
+    scoresi = [i for i in range(105) if mp.mcds[i] in mp.scores.cards]
     cards[cardsi] = 1
     scores[scoresi] = 1
     board = [list(map(lambda c: mp.mcds.index(c), s)) for s in mp.board + op.board]
@@ -1066,11 +1047,11 @@ def getObs(mp):
                 achs[i][c.age-1] = 1
             else:
                 achs[i][c.i+9] = 1
-    opcards = [op.cages.count(i) for i in range(1, 11)]
-    opscores = [op.sages.count(i) for i in range(1, 11)]
+    opcards = op.cards.public()
+    opscores = op.scores.public()
     #
-    tscore = sum(mp.sages)
-    otscore = sum(op.sages)
+    tscore = mp.scores.sum()
+    otscore = op.scores.sum()
     age = max(map(lambda x: x[-1].age if x else 0, mp.board))
     oage = max(map(lambda x: x[-1].age if x else 0, op.board))
     icons = [mp.icons[i] for i in mp.icons]
