@@ -63,6 +63,7 @@ class Stack(Cards):
             for i, card in enumerate(self.cards):
                 self.layout.addWidget(card, 0, 0)
                 card.show()
+                card.raise_()
         elif direction == LEFT:
             for i, card in enumerate(self.cards[::-1]):
                 self.layout.addWidget(card, 0, i, 1, 3)
@@ -72,6 +73,7 @@ class Stack(Cards):
             for i, card in enumerate(self.cards):
                 self.layout.addWidget(card, 0, i, 1, 3)
                 card.show()
+                card.raise_()
         elif direction == UP:
             for i, card in enumerate(self.cards[::-1]):
                 self.layout.addWidget(card, i, 0, 2, 1)
@@ -199,7 +201,7 @@ class Ui_MainWindow(object):
         self.redraw(player)
         self.result = None
         app.exec()
-        if self.result is None:
+        if self.result is None: # if user quited
             sys.exit()
         for button in buttons:
             button.deleteLater()
