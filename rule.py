@@ -454,28 +454,27 @@ class Player:
 
     def maySplay(self, col, d, m=False):
         if m:
-            c = self.chsST(map(lambda c: self.board[c], col))
+            c = self.chsST(map(lambda c: len(self.board[c]) >= 2, col))
             if c is not None:
                 self.splay(c, d)
         else:
-            if self.chsYn():
+            if len(self.board[col]) >= 2 and not self.isSplay(col, d) and self.chsYn():
                 self.splay(col, d)
 
     def isSplay(self, col, d):
         return self.splays[col] == d
     
     def ckSplay(self, col):
-        if len(self.board[col]) < 2 and self.isSplay(col, 0):
+        if len(self.board[col]) < 2 and not self.isSplay(col, 0):
             self.splay(col, 0)
 
     def splay(self, col, d):
-        if self.splays[col] != d:
-            self.splays[col] = d
-            self.drawStack(col)
-            self.cIcon(col)
-            self.ckSpec([1, 2, 3])
-            a, b = DIRS[d]
-            self.ailog('%s %s his %s cards%s', self, a, NUMTOCOL[col], b)
+        self.splays[col] = d
+        self.drawStack(col)
+        self.cIcon(col)
+        self.ckSpec([1, 2, 3])
+        a, b = DIRS[d]
+        self.ailog('%s %s his %s cards%s', self, a, NUMTOCOL[col], b)
     
     def getIcon(self, col):
         q = self.board[col]
