@@ -454,7 +454,8 @@ class Player:
 
     def maySplay(self, col, d, m=False):
         if m:
-            c = self.chsST(map(lambda c: len(self.board[c]) >= 2, col))
+            col = filter(lambda c: len(self.board[c]) >= 2 and not self.isSplay(c, d), col)
+            c = self.chsST(map(lambda c: self.board[c], col))
             if c is not None:
                 self.splay(c, d)
         else:
